@@ -38,9 +38,20 @@
 
 ## Data source
 
-`inso` will first try to find a `.insomnia` directory in it's working directory. This directory is generated in a git repository when using git sync in Insomnia. When `inso` is used in a CI environment, it will always run against the `.insomnia` directory.
+<!-- omit in toc -->
+### Git Repository
 
-If `inso` cannot find the `.insomnia` directory, it will try to run against the Insomnia app data directory (if found). You can override both the working directory, and the data directory, using the `--workingDir` and `--src` global options.
+`inso` will first try to find a `.insomnia` directory in it's working directory. This directory is generated in a git repository when using git sync in Insomnia. When `inso` is used in a CI environment, it will always run against the `.insomnia` directory. If your `.insomnia` directory is not in the root of the repository, you may override this by specifying the `--src` option (specifying `--workingDir` will also work).
+
+<!-- omit in toc -->
+### Insomnia application data
+
+If `inso` cannot find the `.insomnia` directory, it will try to run against the Insomnia app data directory (if found). If your Insomnia application data directory is not in the standard location, you may override it by specifying the `--src` global options.
+
+<!-- omit in toc -->
+### Insomnia V4 export file
+
+`inso` can also be configured to run against an Insomnia V4 export file (yaml or json), as this file contains all entities necessary for `inso`. In order to specify which file to use, set the `--src` global option.
 
 ## The `[identifier]` argument
 
