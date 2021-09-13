@@ -56,14 +56,14 @@ export const loadDb = async ({
   let db: Database | null = null;
 
   // try load from git
-  if (!appDataDir && !src) {
-    const dir = workingDir || '.';
+  if (!appDataDir) {
+    const dir = src || workingDir || '.';
     db = await gitAdapter(dir, filterTypes);
     db && logger.debug(`Data store configured from git repository at \`${path.resolve(dir)}\``);
   }
 
   // try load from file (higher priority)
-  if (src) {
+  if (!db && src) {
     db = await insomniaAdapter(src, filterTypes);
     db && logger.debug(`Data store configured from file at \`${path.resolve(src)}\``);
   }
@@ -72,8 +72,10 @@ export const loadDb = async ({
   if (!db) {
     const dir = src || appDataDir || getAppDataDir(getDefaultAppName());
     db = await neDbAdapter(dir, filterTypes);
-    db && logger.debug(`Data store configured from app data directory at \`${path.resolve(dir)}\``); // Try to load from the Designer data dir, if the Core data directory does not exist
+    db && logger.debug(`Data store configured from app data directory at \`${path.resolve(dir)}\``);
 
+    // Try to load from the Designer data dir, if the Core data directory does not exist
+    // TODO: this should be removed because Designer has been deprecated, but there might be people still using it?
     if (!db && !appDataDir && !src) {
       const designerDir = getAppDataDir('Insomnia Designer');
       db = await neDbAdapter(designerDir);
@@ -84,12 +86,13 @@ export const loadDb = async ({
           )}\``,
         );
     }
-  } // return empty db
+  }
 
   appDataDir && logger.warn(
     'The option `--appDataDir` has been deprecated and will be removed in future releases. Please use `--src` as an alternative',
   );
 
+  // return empty db
   if (!db) {
     logger.warn(
       'No git, app data store or Insomnia V4 export file found, re-run `inso` with `--verbose` to see tracing information',
