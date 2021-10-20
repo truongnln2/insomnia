@@ -1,8 +1,10 @@
 import * as electron from 'electron';
+import { statSync } from 'fs';
 import mkdirp from 'mkdirp';
 import { join } from 'path';
 
 import appConfig from '../../config/config.json';
+import { isMac } from './constants';
 
 export function clickLink(href: string) {
   const { protocol } = new URL(href);
@@ -26,6 +28,25 @@ export const getPortableExecutableDir = () => process.env.PORTABLE_EXECUTABLE_DI
 export function getDataDirectory() {
   const { app } = electron.remote || electron;
   return process.env.INSOMNIA_DATA_PATH || app.getPath('userData');
+}
+
+export function getAppPathUniversal() {
+  const { app } = electron.remote || electron;
+
+  const appPath = app.getAppPath();
+
+  if (!isMac() || !appPath.endsWith('/app.asar')) {
+    return appPath;
+  }
+
+  const archAppPath = appPath.replace(/\/app\.asar$/, `app-${process.arch}.asar`);
+
+  try {
+    statSync(archAppPath);
+    return archAppPath;
+  } catch (e) {
+    return appPath;
+  }
 }
 
 export function getViewportSize(): string | null {

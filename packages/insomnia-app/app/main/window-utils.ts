@@ -16,7 +16,7 @@ import {
   MNEMONIC_SYM,
 } from '../common/constants';
 import { docsBase } from '../common/documentation';
-import { clickLink, getDataDirectory, restartApp } from '../common/electron-helpers';
+import { clickLink, getAppPathUniversal, getDataDirectory, restartApp } from '../common/electron-helpers';
 import * as log from '../common/log';
 import LocalStorage from './local-storage';
 
@@ -125,7 +125,7 @@ export function createWindow() {
 
   // Load the html of the app.
   const url = process.env.APP_RENDER_URL;
-  const appUrl = url || `file://${app.getAppPath()}/renderer.html`;
+  const appUrl = url || `file://${getAppPathUniversal()}/renderer.html`.replace('app.asar', 'app-arm64.asar');
   console.log(`[main] Loading ${appUrl}`);
   mainWindow?.loadURL(appUrl);
   // Emitted when the window is closed.
@@ -360,7 +360,7 @@ export function createWindow() {
       {
         label: 'Show Open Source Licenses',
         click: () => {
-          const licensePath = path.resolve(app.getAppPath(), '../opensource-licenses.txt');
+          const licensePath = path.resolve(getAppPathUniversal(), '../opensource-licenses.txt');
           shell.openPath(licensePath);
         },
       },
