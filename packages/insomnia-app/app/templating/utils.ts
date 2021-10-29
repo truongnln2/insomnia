@@ -76,7 +76,12 @@ export function getKeys(
     const keys = Object.keys(obj);
 
     for (const key of keys) {
-      allKeys = [...allKeys, ...getKeys(obj[key], forceBracketNotation(prefix, key), meta[key] || meta)];
+      if (key !== META_KEY) {
+        allKeys = [
+          ...allKeys,
+          ...getKeys(obj[key], forceBracketNotation(prefix, key), meta[key] || meta),
+        ];
+      }
     }
   } else if (typeOfObj === '[object Function]') {
     // Ignore functions
@@ -289,4 +294,29 @@ export function decodeEncoding<T>(value: T) {
   }
 
   return value;
+}
+
+export interface NunjucksParsedFilterArg {
+  type: 'string' | 'number' | 'boolean' | 'enum' | 'model';
+  value: string | number | boolean;
+  defaultValue?: string | number | boolean;
+  forceVariable?: boolean;
+  placeholder?: string;
+  help?: string;
+  displayName?: string;
+  quotedBy?: '"' | "'";
+  validate?: (value: any) => string;
+  hide?: (arg0: NunjucksParsedFilterArg[]) => boolean;
+  model?: string;
+  options?: PluginArgumentEnumOption[];
+  itemTypes?: ('file' | 'directory')[];
+  extensions?: string[];
+}
+
+export interface NunjucksParsedFilter {
+  name: string;
+  description?: string;
+  displayName?: string;
+  args?: NunjucksParsedFilterArg[];
+  isPlugin: boolean;
 }

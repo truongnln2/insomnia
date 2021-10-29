@@ -11,12 +11,17 @@ import { GrpcRequest } from '../models/grpc-request';
 import type { Request } from '../models/request';
 import type { RequestGroup } from '../models/request-group';
 import type { Workspace } from '../models/workspace';
-import type { PluginTemplateTag } from '../templating/extensions/index';
+import type { PluginTemplateFilter, PluginTemplateTag } from '../templating/extensions/index';
 import { showError } from '../ui/components/modals/index';
 import type { PluginTheme } from './misc';
 
+export interface TemplateFilter extends InternalProperties {
+  templateFilter: PluginTemplateFilter;
+}
+
 export interface Module {
   templateTags?: PluginTemplateTag[];
+  templateFilters?: PluginTemplateFilter[];
   requestHooks?: ((requstContext: any) => void)[];
   responseHooks?: ((responseContext: any) => void)[];
   themes?: PluginTheme[];
@@ -345,6 +350,23 @@ export async function getTemplateTags(): Promise<TemplateTag[]> {
   }
 
   return extensions;
+}
+
+export async function getTemplateFilter(): Promise<TemplateFilter[]> {
+  let filters: TemplateFilter[] = [];
+
+  for (const plugin of await getActivePlugins()) {
+    const templateFilters = plugin.module.templateFilters || [];
+    filters = [
+      ...filters,
+      ...templateFilters.map(tf => ({
+        plugin,
+        templateFilter: tf,
+      })),
+    ];
+  }
+
+  return filters;
 }
 
 export async function getRequestHooks(): Promise<RequestHook[]> {

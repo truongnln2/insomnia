@@ -78,6 +78,7 @@ export class NunjucksModal extends PureComponent<Props, State> {
       title = 'Variable';
       editor = (
         <VariableEditor
+          workspace={workspace}
           onChange={this._handleTemplateChange}
           defaultValue={defaultTemplate}
           handleRender={handleRender}

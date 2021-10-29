@@ -544,8 +544,8 @@ class App extends PureComponent<AppProps, State> {
     });
   }
 
-  async _handleGetRenderContext(): Promise<RenderContextAndKeys> {
-    const context = await this._fetchRenderContext();
+  async _handleGetRenderContext(fieldSource?: string, source?: any): Promise<RenderContextAndKeys> {
+    const context = await this._fetchRenderContext(fieldSource, source);
     const keys = getKeys(context, NUNJUCKS_TEMPLATE_GLOBAL_PROPERTY_NAME);
     return {
       context,
@@ -561,11 +561,11 @@ class App extends PureComponent<AppProps, State> {
    * @returns {Promise}
    * @private
    */
-  async _handleRenderText<T>(obj: T, contextCacheKey: string | null = null) {
+  async _handleRenderText<T>(obj: T, contextCacheKey: string | null = null, fieldSource?: string, source?: any) {
     if (!contextCacheKey || !this._getRenderContextPromiseCache[contextCacheKey]) {
       // NOTE: We're caching promises here to avoid race conditions
       // @ts-expect-error -- TSCONVERSION contextCacheKey being null used as object index
-      this._getRenderContextPromiseCache[contextCacheKey] = this._fetchRenderContext();
+      this._getRenderContextPromiseCache[contextCacheKey] = this._fetchRenderContext(fieldSource, source);
     }
 
     // Set timeout to delete the key eventually

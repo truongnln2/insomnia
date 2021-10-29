@@ -15,9 +15,9 @@ import { isRequestGroup, RequestGroup } from '../models/request-group';
 import { RequestSetter, SetterEventType } from '../models/request-setter';
 import { isWorkspace, Workspace } from '../models/workspace';
 import * as templating from '../templating';
-import { NUNJUCKS_TEMPLATE_GLOBAL_PROPERTY_NAME } from '../templating';
+import { NUNJUCKS_TEMPLATE_GLOBAL_PROPERTY_NAME, STATIC_CONTEXT_SOURCE_NAME } from '../templating';
 import * as templatingUtils from '../templating/utils';
-import { getKeys } from '../templating/utils';
+import { getKeys, META_KEY } from '../templating/utils';
 import { CONTENT_TYPE_GRAPHQL, JSON_ORDER_SEPARATOR } from './constants';
 import { database as db } from './database';
 import { metaSortKeySort } from './sorting';
@@ -28,6 +28,16 @@ export type RenderPurpose = 'send' | 'general' | 'no-render';
 export const RENDER_PURPOSE_SEND: RenderPurpose = 'send';
 export const RENDER_PURPOSE_GENERAL: RenderPurpose = 'general';
 export const RENDER_PURPOSE_NO_RENDER: RenderPurpose = 'no-render';
+
+export interface RenderKey {
+  name: string;
+  value: any;
+  meta?: {
+    name: string;
+    type: string;
+    id: string;
+  };
+}
 
 /** Key/value pairs to be provided to the render context */
 export type ExtraRenderInfo = {
@@ -148,6 +158,7 @@ export async function buildRenderContext(
     rootEnvironment,
     subEnvironment,
     baseContext = {},
+    staticVariables = {},
   }: {
     ancestors?: RenderContextAncestor[];
     rootEnvironment?: Environment;
@@ -158,6 +169,13 @@ export async function buildRenderContext(
 ) {
   const envObjects: Record<string, any>[] = [];
 
+  envObjects.push({
+    sourceType: STATIC_CONTEXT_SOURCE_NAME,
+    sourceId: 'n/a',
+    sourceName: STATIC_CONTEXT_SOURCE_NAME,
+    ordered: staticVariables,
+  });
+
   // Get root environment keys in correct order
   // Then get sub environment keys in correct order
   // Then get ancestor (folder) environment keys in correct order
@@ -167,7 +185,12 @@ export async function buildRenderContext(
       rootEnvironment.dataPropertyOrder,
       JSON_ORDER_SEPARATOR,
     );
-    envObjects.push(ordered);
+    envObjects.push({
+      sourceType: rootEnvironment.type,
+      sourceId: rootEnvironment._id,
+      sourceName: rootEnvironment.name,
+      ordered,
+    });
   }
 
   if (subEnvironment) {
@@ -176,7 +199,12 @@ export async function buildRenderContext(
       subEnvironment.dataPropertyOrder,
       JSON_ORDER_SEPARATOR,
     );
-    envObjects.push(ordered);
+    envObjects.push({
+      sourceType: subEnvironment.type,
+      sourceId: subEnvironment._id,
+      sourceName: subEnvironment.name,
+      ordered,
+    });
   }
 
   for (const doc of (ancestors || []).reverse()) {
@@ -189,7 +217,12 @@ export async function buildRenderContext(
         environmentPropertyOrder,
         JSON_ORDER_SEPARATOR,
       );
-      envObjects.push(ordered);
+      envObjects.push({
+        sourceType: ancestor.type,
+        sourceName: ancestor.type,
+        sourceId: ancestor._id,
+        ordered,
+      });
     }
   }
 
@@ -250,6 +283,7 @@ export async function buildRenderContext(
         // For all other Types, add the Object to the Context.
         subContext[key] = subObject[key];
       }
+      subMetaContext[key] = { ...metaData };
     }
 
     return {
@@ -305,6 +339,7 @@ export async function buildRenderContext(
       finalRenderContext[key] = renderResult;
     }
   }
+  finalRenderContext[META_KEY] = metaContext;
 
   return finalRenderContext;
 }

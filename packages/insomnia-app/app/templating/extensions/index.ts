@@ -98,3 +98,11 @@ export interface PluginTemplateTag {
   validate?: (value: any) => string | null;
   priority?: number;
 }
+
+export interface PluginTemplateFilter {
+  name: string;
+  displayName: string;
+  args: PluginArgument[];
+  description: string;
+  run: (input: string, ...arg: any[]) => Promise<any> | any;
+}
