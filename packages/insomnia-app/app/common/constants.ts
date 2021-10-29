@@ -532,3 +532,5 @@ export const EXPORT_TYPE_ENVIRONMENT = 'environment';
 export const EXPORT_TYPE_API_SPEC = 'api_spec';
 export const EXPORT_TYPE_PROTO_FILE = 'proto_file';
 export const EXPORT_TYPE_PROTO_DIRECTORY = 'proto_directory';
+export const EXPORT_TYPE_REQUEST_DATASET = 'request_dataset';
+export const EXPORT_TYPE_REQUEST_SETTER = 'request_setter';

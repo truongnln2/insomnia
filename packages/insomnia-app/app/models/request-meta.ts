@@ -22,6 +22,12 @@ interface BaseRequestMeta {
   pinned: boolean;
   lastActive: number;
   downloadPath: string | null;
+  datasetWidth: number | null;
+  datasetWidthType: string | null;
+  datasetShowAll: boolean | null;
+  visualizeEnabled: boolean | null;
+  visualizeTemplate: string | null;
+  visualizePowerUserMode: boolean | null;
 }
 
 export type RequestMeta = BaseModel & BaseRequestMeta;
