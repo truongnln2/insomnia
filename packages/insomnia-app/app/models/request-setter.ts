@@ -69,6 +69,12 @@ export function findByParentId(parentId: string) {
   return db.find<RequestSetter>(type, { parentId });
 }
 
+export function getAfterReceivedResponseSetters(setters: RequestSetter[]) {
+  return setters
+    ?.filter(s => s.event === SetterEventType.AFTER_RECEIVED_RESPONSE)
+    ?.sort(sort) || [];
+}
+
 export function remove(requestGroup: RequestSetter) {
   return db.remove(requestGroup);
 }

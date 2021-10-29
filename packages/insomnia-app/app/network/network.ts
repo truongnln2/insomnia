@@ -50,7 +50,7 @@ import {
   hasUserAgentHeader,
   waitForStreamToFinish,
 } from '../common/misc';
-import type { ExtraRenderInfo, RenderedRequest } from '../common/render';
+import { executeSetter, ExtraRenderInfo, RenderedRequest } from '../common/render';
 import {
   getRenderedRequestAndContext,
   RENDER_PURPOSE_NO_RENDER,
@@ -59,6 +59,7 @@ import {
 import * as models from '../models';
 import type { Environment } from '../models/environment';
 import type { Request, RequestHeader } from '../models/request';
+import { RequestDataSet } from '../models/request-dataset';
 import type { ResponseHeader, ResponseTimelineEntry } from '../models/response';
 import type { Settings } from '../models/settings';
 import { isWorkspace, Workspace } from '../models/workspace';
@@ -88,6 +89,7 @@ export interface ResponsePatch {
   statusMessage?: string;
   timelinePath?: string;
   url?: string;
+  dataset?: RequestDataSet | null;
 }
 
 // Time since user's last keypress to wait before making the request
@@ -915,6 +917,7 @@ export async function send(
   requestId: string,
   environmentId?: string,
   extraInfo?: ExtraRenderInfo,
+  datasetId?: string,
 ) {
   console.log(`[network] Sending req=${requestId} env=${environmentId || 'null'}`);
   // HACK: wait for all debounces to finish
@@ -941,18 +944,29 @@ export async function send(
     models.requestGroup.type,
     models.workspace.type,
   ]);
+  const setters = await models.requestSetter.findByParentId(requestId);
+  const afterReceivedSetters = models.requestSetter.getAfterReceivedResponseSetters(setters);
 
   if (!request) {
     throw new Error(`Failed to find request to send for ${requestId}`);
   }
 
   const environment: Environment | null = await models.environment.getById(environmentId || 'n/a');
+
+  const dataset: RequestDataSet | null = await models.requestDataset.getById(datasetId || 'n/a');
+  let backupDataset: RequestDataSet | null = null;
+  if (dataset) {
+    backupDataset = (await models.initModel(models.requestDataset.type, dataset)) as RequestDataSet;
+  }
+
   const renderResult = await getRenderedRequestAndContext(
     {
       request,
       environmentId,
       purpose: RENDER_PURPOSE_SEND,
       extraInfo,
+      dataset,
+      requestSetters: setters,
     },
   );
   const renderedRequestBeforePlugins = renderResult.request;
@@ -992,11 +1006,22 @@ export async function send(
     environment,
     settings.validateSSL,
   );
+  response.dataset = backupDataset;
   console.log(
     response.error
       ? `[network] Response failed req=${requestId} err=${response.error || 'n/a'}`
       : `[network] Response succeeded req=${requestId} status=${response.statusCode || '?'}`,
   );
+
+  // execute after received setters
+  (response as any).onCreated = () => executeSetter(
+    afterReceivedSetters,
+    renderResult.context,
+    ancestors,
+    environmentId,
+    backupDataset,
+  );
+
   return response;
 }
 

@@ -49,6 +49,7 @@ import { GrpcRequestMeta } from '../../models/grpc-request-meta';
 import * as requestOperations from '../../models/helpers/request-operations';
 import { isNotDefaultProject } from '../../models/project';
 import { Request, updateMimeType } from '../../models/request';
+import { RequestDataSet } from '../../models/request-dataset';
 import { isRequestGroup, RequestGroup } from '../../models/request-group';
 import { RequestMeta } from '../../models/request-meta';
 import { Response } from '../../models/response';
@@ -488,9 +489,54 @@ class App extends PureComponent<AppProps, State> {
     });
   }
 
-  async _fetchRenderContext() {
+  async _fetchRenderContext(fieldSource?: string, source?: any) {
     const { activeEnvironment, activeRequest, activeWorkspace } = this.props;
     const ancestors = await render.getRenderContextAncestors(activeRequest || activeWorkspace);
+
+    const environmentId = activeEnvironment?._id;
+    let dataset;
+    let hasFieldSourceFlg = true;
+    if (fieldSource === 'request') {
+      if (source) {
+        dataset = await models.requestDataset.getOrCreateForRequestId(source._id);
+        return render.getRenderContext({
+          request: source, environmentId, ancestors, dataset,
+        });
+      }
+    } else if (fieldSource === 'response') {
+      if (source) {
+        const response = (source as Response);
+        const baseDataset = await models.requestDataset.getOrCreateForRequestId(response.parentId);
+        const requestDataset = await models.requestDataset.getById(response.dataset?._id || 'n/a');
+        const environment = Object.assign(
+          {},
+          baseDataset?.environment,
+          requestDataset?.environment,
+          response.dataset?.environment,
+        );
+        dataset = Object.assign(
+          {},
+          response.dataset,
+          { environment },
+        );
+        if (dataset) {
+          return render.getRenderContext({
+            request: source, environmentId, ancestors, dataset,
+          });
+        } else {
+          source = null;
+        }
+      }
+    } else {
+      hasFieldSourceFlg = false;
+    }
+    if (!source && hasFieldSourceFlg && activeRequest) {
+      dataset = await models.requestDataset.getOrCreateForRequestId(activeRequest._id);
+      return render.getRenderContext({
+        request: activeRequest, environmentId, ancestors, dataset,
+      });
+    }
+
     return render.getRenderContext({
       request: activeRequest || undefined,
       environmentId: activeEnvironment?._id,
@@ -530,13 +576,13 @@ class App extends PureComponent<AppProps, State> {
     return render.render(obj, context);
   }
 
-  _handleGenerateCodeForActiveRequest() {
+  _handleGenerateCodeForActiveRequest(request?: Request, dataset?: RequestDataSet) {
     // @ts-expect-error -- TSCONVERSION should skip this if active request is grpc request
-    App._handleGenerateCode(this.props.activeRequest);
+    App._handleGenerateCode(request || this.props.activeRequest, dataset);
   }
 
-  static _handleGenerateCode(request: Request) {
-    showModal(GenerateCodeModal, request);
+  static _handleGenerateCode(request: Request, dataset?: RequestDataSet) {
+    showModal(GenerateCodeModal, request, dataset);
   }
 
   async _handleCopyAsCurl(request: Request) {
@@ -836,7 +882,7 @@ class App extends PureComponent<AppProps, State> {
     }
   }
 
-  async _handleSendRequestWithEnvironment(requestId, environmentId) {
+  async _handleSendRequestWithEnvironment(requestId, environmentId, dataset?) {
     const { handleStartLoading, handleStopLoading, settings } = this.props;
     const request = await models.request.getById(requestId);
 
@@ -849,8 +895,12 @@ class App extends PureComponent<AppProps, State> {
     trackSegmentEvent(SegmentEvent.requestExecute);
     handleStartLoading(requestId);
 
+    if (!dataset) {
+      dataset = await models.requestDataset.getOrCreateForRequest(request);
+    }
+
     try {
-      const responsePatch = await network.send(requestId, environmentId);
+      const responsePatch = await network.send(requestId, environmentId, undefined, dataset._id);
       await models.response.create(responsePatch, settings.maxHistoryResponses);
     } catch (err) {
       if (err.type === 'render') {
