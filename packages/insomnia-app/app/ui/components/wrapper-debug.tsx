@@ -286,6 +286,8 @@ export class WrapperDebug extends PureComponent<Props> {
       responseFilterHistory,
       responsePreviewMode,
       settings,
+      activeRequestMeta,
+      handleRender,
     } = this.props.wrapperProps;
 
     // activeRequest being truthy only needs to be checked for isGrpcRequest (for now)
@@ -329,6 +331,8 @@ export class WrapperDebug extends PureComponent<Props> {
           response={activeResponse}
           responses={activeRequestResponses}
           unitTestResult={activeUnitTestResult}
+          requestMeta={activeRequestMeta}
+          handleRender={handleRender}
         />
       </ErrorBoundary>
     );

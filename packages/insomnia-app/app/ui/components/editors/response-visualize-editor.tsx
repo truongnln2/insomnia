@@ -24,6 +24,7 @@ interface State {
   visualizeTemplate: string;
   metaId: string;
   nunjucksPowerUserMode: boolean;
+  visualizationToggle: boolean;
   renderKey: number;
 }
 
@@ -69,6 +70,7 @@ export class ResponseVisualizeEditor extends PureComponent<Props, State> {
       visualizeTemplate: props.requestMeta?.visualizeTemplate || '',
       metaId: props.requestMeta?._id || '',
       nunjucksPowerUserMode: props.requestMeta?.visualizePowerUserMode || false,
+      visualizationToggle: props.requestMeta?.visualizeEnabled || false,
       renderKey: 0,
     };
   }
@@ -141,6 +143,20 @@ export class ResponseVisualizeEditor extends PureComponent<Props, State> {
     });
   }
 
+  _updateToggle() {
+    const { visualizationToggle, renderKey } = this.state;
+    const { onChangeRequestMeta, request } = this.props;
+
+    onChangeRequestMeta({
+      visualizeEnabled: !visualizationToggle,
+    }, request._id);
+
+    this.setState({
+      visualizationToggle: !visualizationToggle,
+      renderKey: renderKey + 1,
+    });
+  }
+
   render() {
     const {
       request,
@@ -149,7 +165,7 @@ export class ResponseVisualizeEditor extends PureComponent<Props, State> {
       handleGetRenderContext,
       isVariableUncovered,
     } = this.props;
-    const { visualizeTemplate, nunjucksPowerUserMode, renderKey } = this.state;
+    const { visualizeTemplate, nunjucksPowerUserMode, visualizationToggle, renderKey } = this.state;
     const uniqueKey = `${request._id}::response-visualizer-setting`;
     return (
       <Container>
@@ -160,6 +176,12 @@ export class ResponseVisualizeEditor extends PureComponent<Props, State> {
             checked={nunjucksPowerUserMode}
             label={'Show raw tag'}
             onChange={this._updateNunjucksPowerUserMode}
+          />
+          <ToggleSwitch
+            labelClassName="space-right"
+            checked={visualizationToggle}
+            label={'Enable visualization'}
+            onChange={this._updateToggle}
           />
         </div>
         <RawEditor

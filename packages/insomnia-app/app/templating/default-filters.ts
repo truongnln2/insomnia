@@ -1,8 +1,5 @@
 
-import jmespath from './filters/jmespath';
-import jsonDiff from './filters/json-diff';
-import jsonPath from './filters/json-path';
-import xml2json from './filters/xml2json';
+import customFilters from './filters';
 
 export const defaultFilters = [
   {
@@ -507,8 +504,5 @@ export const defaultFilters = [
     displayName: 'wordcount',
     args: [],
   },
-  jmespath,
-  jsonDiff,
-  jsonPath,
-  xml2json,
+  ...customFilters,
 ];
