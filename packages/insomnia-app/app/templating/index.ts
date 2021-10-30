@@ -5,6 +5,7 @@ import * as plugins from '../plugins/index';
 import BaseExtension from './base-extension';
 import BaseFilter from './base-filter';
 import { defaultFilters } from './default-filters';
+import customFilters from './filters';
 import type { NunjucksParsedFilter, NunjucksParsedTag } from './utils';
 
 export const CURRENT_REQUEST_PROPERTY_NAME = '__current_request_id__';
@@ -133,7 +134,7 @@ export async function getFilterDefinitions() {
       description: filter.filter?.description || (filter.filter?.getDescription && filter.filter?.getDescription()),
       displayName: filter.filter?.displayName || (filter.filter?.getDisplayName && filter.filter?.getDisplayName()),
       args: filter.filter?.args || (filter.filter?.getArgs && filter.filter?.getArgs()),
-      isPlugin: filter.filter instanceof BaseFilter,
+      isPlugin: (filter.filter instanceof BaseFilter && (filter.filter as BaseFilter)._plugin != null),
     }));
 }
 
@@ -220,6 +221,10 @@ async function getNunjucks(renderMode: string) {
   }
 
   // add template filters
+  for (let i = 0; i < customFilters.length; i++) {
+    const templateFilter = customFilters[i];
+    BaseFilter.newCustomFilter(templateFilter, nj);
+  }
   for (let i = 0; i < allTemplateTagFilters.length; i++) {
     const { templateFilter, plugin } = allTemplateTagFilters[i];
     BaseFilter.newFilter(templateFilter, plugin, nj);

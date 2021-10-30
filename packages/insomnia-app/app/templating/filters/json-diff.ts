@@ -1,6 +1,9 @@
 import { JsonDiffer } from 'json-difference';
+
+import { PluginTemplateFilter } from '../extensions';
+
 const jsondifference = new JsonDiffer();
-export default {
+const jsonDiffFilter: PluginTemplateFilter = {
   name: 'jsonDiff',
   displayName: 'JSON difference',
   args: [
@@ -28,3 +31,5 @@ export default {
     return jsondifference.getDiff(body1, body2);
   },
 };
+
+export default jsonDiffFilter;

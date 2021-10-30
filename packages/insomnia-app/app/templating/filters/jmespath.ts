@@ -1,5 +1,8 @@
 import jmespath from 'jmespath';
-export default {
+
+import { PluginTemplateFilter } from '../extensions';
+
+const jmespathFilter: PluginTemplateFilter = {
   name: 'jmespath',
   displayName: 'JMESPath',
   args: [
@@ -21,3 +24,4 @@ export default {
     return jmespath.search(body1, path);
   },
 };
+export default jmespathFilter;

@@ -13,13 +13,18 @@ const EMPTY_ARG = '__EMPTY_NUNJUCKS_ARG__';
 export default class BaseFilter {
   _ft: PluginTemplateFilter | null = null;
   _plugin: Plugin | null = null;
-  constructor(ft: PluginTemplateFilter, plugin: Plugin) {
+  constructor(ft: PluginTemplateFilter, plugin: Plugin | null) {
     this._ft = ft;
     this._plugin = plugin;
   }
 
   static newFilter(ft: PluginTemplateFilter, plugin: Plugin, nj: nunjucks.Environment) {
     const filter = new BaseFilter(ft, plugin);
+    filter.addFilter(nj);
+  }
+
+  static newCustomFilter(ft: PluginTemplateFilter, nj: nunjucks.Environment) {
+    const filter = new BaseFilter(ft, null);
     filter.addFilter(nj);
   }
 
@@ -69,11 +74,11 @@ export default class BaseFilter {
       .slice(0, runArgs.length - 1)
       .filter(a => a !== EMPTY_ARG)
       .map(decodeEncoding);
+    const pluginData = this._plugin ? pluginContexts.store.init(this._plugin) : {};
     // Define a helper context with utils
     const helperContext = {
       ...pluginContexts.app.init(renderPurpose),
-      // @ts-expect-error -- TSCONVERSION
-      ...pluginContexts.store.init(this._plugin),
+      ...pluginData,
       ...pluginContexts.network.init(environmentId),
       meta: renderMeta,
       context: renderContext,

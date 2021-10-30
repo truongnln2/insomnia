@@ -1,6 +1,8 @@
 import jsonpath from 'jsonpath';
 
-export default {
+import { PluginTemplateFilter } from '../extensions';
+
+const jsonPathFilter: PluginTemplateFilter = {
   name: 'jsonPath',
   displayName: 'JSON path filter',
   args: [
@@ -34,3 +36,5 @@ export default {
     return JSON.stringify(results);
   },
 };
+
+export default jsonPathFilter;

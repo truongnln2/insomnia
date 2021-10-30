@@ -1,3 +1,5 @@
+import { PluginTemplateFilter } from '../extensions';
+
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable operator-linebreak */
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -171,7 +173,7 @@ function parseXml(xml: string): Document | null {
   return dom;
 }
 
-export default {
+const xml2JsonFilter : PluginTemplateFilter = {
   name: 'xml2json',
   displayName: 'XML to JSON',
   args: [],
@@ -189,3 +191,5 @@ export default {
     return '';
   },
 };
+
+export default xml2JsonFilter;
