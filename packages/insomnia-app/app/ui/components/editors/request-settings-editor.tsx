@@ -223,6 +223,12 @@ export class RequestSettingsEditor extends PureComponent<Props, State> {
         <div className="pad-top pad-bottom">
           <div className="form-control form-control--thin">
             <label>
+              Apply filter dataset by active environment
+              {this.renderCheckboxInput('settingDatasetFilter')}
+            </label>
+          </div>
+          <div className="form-control form-control--thin">
+            <label>
               Using response visualization
               {this.renderCheckboxInput('settingResponseVisualize')}
             </label>

@@ -753,6 +753,7 @@ export async function getRenderedRequestAndContext(
       settingRebuildPath: renderedRequest.settingRebuildPath,
       settingFollowRedirects: renderedRequest.settingFollowRedirects,
       settingResponseVisualize: renderedRequest.settingResponseVisualize,
+      settingDatasetFilter: renderedRequest.settingDatasetFilter,
       type: renderedRequest.type,
       url: renderedRequest.url,
     },

@@ -1,8 +1,9 @@
 import { autoBindMethodsForReact } from 'class-autobind-decorator';
 import {
-  ListGroup,
+  ListGroup, ToggleSwitch,
 } from 'insomnia-components';
 import React, { PureComponent } from 'react';
+import styled from 'styled-components';
 
 import { AUTOBIND_CFG } from '../../../common/constants';
 import { HandleGetRenderContext, HandleRender } from '../../../common/render';
@@ -13,6 +14,15 @@ import { RequestDataSet } from '../../../models/request-dataset';
 import { Workspace } from '../../../models/workspace';
 import { WrapperProps } from '../wrapper';
 import DatasetRowEditor from './dataset-row-editor';
+
+const StyledDatasetActionsContainer = styled.div`
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  > .jump-right {
+    margin-left: auto;
+  }
+`;
 
 interface Props {
   request: Request;
@@ -32,6 +42,7 @@ interface State {
   baseDataset?: RequestDataSet;
   otherDatasets: RequestDataSet[];
   subEnvironments: Environment[];
+  toggleEnvironmentFilter: boolean;
 }
 
 @autoBindMethodsForReact(AUTOBIND_CFG)
@@ -41,6 +52,7 @@ class RequestDatasetEditor extends PureComponent<Props, State> {
     toggleIconRotation: -90,
     otherDatasets: [],
     subEnvironments: [],
+    toggleEnvironmentFilter: false,
   };
 
   constructor(props: Props) {
@@ -75,6 +87,7 @@ class RequestDatasetEditor extends PureComponent<Props, State> {
       subEnvironments,
       baseDataset,
       otherDatasets: datasets,
+      toggleEnvironmentFilter: request.settingDatasetFilter || false,
     });
   }
 
@@ -123,6 +136,7 @@ class RequestDatasetEditor extends PureComponent<Props, State> {
         environment: dataset.environment,
         name: dataset.name,
         description: dataset.description,
+        applyEnv: dataset.applyEnv,
       });
       const newDatasets = otherDatasets.map(ds => ds._id === updatingDataset._id ? updatingDataset : ds);
       otherDatasets[index] = updatingDataset;
@@ -150,14 +164,25 @@ class RequestDatasetEditor extends PureComponent<Props, State> {
     handleGenerateCode(request, dataset);
   }
 
+  _updateToggleEnvironmentFilter() {
+    const { toggleEnvironmentFilter } = this.state;
+    models.request.update(this.props.request, {
+      settingDatasetFilter: !toggleEnvironmentFilter,
+    });
+    this.setState({
+      toggleEnvironmentFilter: !toggleEnvironmentFilter,
+    });
+  }
+
   render() {
-    const { baseDataset, otherDatasets } = this.state;
+    const { baseDataset, otherDatasets, toggleEnvironmentFilter } = this.state;
     const {
       handleGetRenderContext,
       handleRender,
       isVariableUncovered,
       nunjucksPowerUserMode,
     } = this.props;
+    const { activeEnvironment } = this.props.wrapperProps;
     return (
       <div className="pad">
         <div className="scrollable">
@@ -173,26 +198,35 @@ class RequestDatasetEditor extends PureComponent<Props, State> {
             onChanged={this.onBaseDatasetChanged}
           />}
           <hr />
-          <button className="btn btn--clicky faint" onClick={this._addNewDataSet}>
-            Add new dataset
-          </button>
+          <StyledDatasetActionsContainer className="pod">
+            <button className="btn btn--clicky faint" onClick={this._addNewDataSet}>
+              Add new dataset
+            </button>
+            <ToggleSwitch
+              labelClassName="jump-right"
+              checked={toggleEnvironmentFilter}
+              label={'Filter by env'}
+              onChange={this._updateToggleEnvironmentFilter}
+            />
+          </StyledDatasetActionsContainer>
           <ListGroup>
-            {otherDatasets.map((dataset, i) => (
-              <DatasetRowEditor
-                key={i}
-                wrapperProps={this.props.wrapperProps}
-                nunjucksPowerUserMode={nunjucksPowerUserMode}
-                isVariableUncovered={isVariableUncovered}
-                handleRender={handleRender}
-                handleGetRenderContext={handleGetRenderContext}
-                onGenerateCodeWithDataset={this._handleGenerateCodeWithDataset}
-                dataset={dataset}
-                isBaseDataset={false}
-                onChanged={this.onDatasetChanged}
-                onDeleteDataset={this.onDeleteDataset}
-                onSendWithDataset={this.onSendWithDataset}
-              />
-            ))}
+            {otherDatasets.filter(ds => !toggleEnvironmentFilter || !ds.applyEnv || ds.applyEnv === activeEnvironment?._id)
+              .map(dataset => (
+                <DatasetRowEditor
+                  key={dataset._id}
+                  wrapperProps={this.props.wrapperProps}
+                  nunjucksPowerUserMode={nunjucksPowerUserMode}
+                  isVariableUncovered={isVariableUncovered}
+                  handleRender={handleRender}
+                  handleGetRenderContext={handleGetRenderContext}
+                  onGenerateCodeWithDataset={this._handleGenerateCodeWithDataset}
+                  dataset={dataset}
+                  isBaseDataset={false}
+                  onChanged={this.onDatasetChanged}
+                  onDeleteDataset={this.onDeleteDataset}
+                  onSendWithDataset={this.onSendWithDataset}
+                />
+              ))}
           </ListGroup>
         </div>
       </div>

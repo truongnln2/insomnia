@@ -16,7 +16,7 @@ export const canSync = true;
 
 interface BaseRequestDataset {
   name: string;
-  applyEnv?: string;
+  applyEnv: string | null;
   environment: Record<string, any>;
   environmentPropertyOrder: Record<string, any> | null;
   description?: string;
@@ -33,6 +33,7 @@ export const isRequestDataset = (model: Pick<BaseModel, 'type'>): model is Reque
 export function init(): BaseRequestDataset {
   return {
     name: 'New dataset',
+    applyEnv: null,
     environment: {},
     environmentPropertyOrder: null,
     default: false,

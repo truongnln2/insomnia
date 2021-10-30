@@ -11,9 +11,11 @@ import styled from 'styled-components';
 import { AUTOBIND_CFG, DATASET_WIDTH_TYPE_FIX_LEFT, DATASET_WIDTH_TYPE_PERCENTAGE } from '../../../common/constants';
 import { HandleGetRenderContext, HandleRender } from '../../../common/render';
 import { metaSortKeySort } from '../../../common/sorting';
+import { Environment } from '../../../models/environment';
 import { RequestDataSet } from '../../../models/request-dataset';
 import { Editable } from '../base/editable';
 import { PromptButton } from '../base/prompt-button';
+import { ChooseEnvironmentsDropdown } from '../dropdowns/choose-environments-dropdown';
 import KeyValueEditor from '../key-value-editor/editor';
 import { WrapperProps } from '../wrapper';
 
@@ -36,6 +38,7 @@ interface State {
   toggleIconRotation: number;
   datasetName: string;
   datasetKey: number;
+  activeEnvironment: Environment | undefined;
   baseDataset: {
     id: string;
     metaSortKey: number;
@@ -50,7 +53,7 @@ const StyledResultListItem = styled(ListGroupItem)`
 
   > div:first-of-type {
     display: grid;
-    grid-template-columns: auto auto minmax(0, 1fr) auto auto auto;
+    grid-template-columns: auto auto minmax(0, 1fr) auto auto auto auto;
     padding: var(--padding-xs) 0;
   }
 
@@ -107,6 +110,7 @@ class DatasetRowEditor extends PureComponent<Props, State> {
   constructor(props: Props) {
     super(props);
     const { dataset } = this.props;
+    const { environments } = this.props.wrapperProps;
     const datasetList = Object.keys(dataset.environment).map(k => ({
       _id: k,
       id: k,
@@ -115,12 +119,15 @@ class DatasetRowEditor extends PureComponent<Props, State> {
       value: dataset.environment[k].value,
       description: dataset.environment[k].description,
     })).sort(metaSortKeySort);
+
+    const activeEnvironment = environments.find(e => e._id === dataset.applyEnv);
     this.state = {
       isToggled: false,
       toggleIconRotation: -90,
       baseDataset: datasetList,
       datasetName: dataset.name,
       datasetKey: 0,
+      activeEnvironment,
     };
   }
 
@@ -226,6 +233,19 @@ class DatasetRowEditor extends PureComponent<Props, State> {
     });
   }
 
+  _handleChangeEnvironment(environmentId: string) {
+    const { environments } = this.props.wrapperProps;
+    const activeEnvironment = environments.find(e => e._id === environmentId);
+
+    const { dataset, onChanged } = this.props;
+    dataset.applyEnv = environmentId;
+    onChanged(dataset);
+
+    this.setState({
+      activeEnvironment,
+    });
+  }
+
   render() {
     const {
       handleGetRenderContext,
@@ -240,14 +260,18 @@ class DatasetRowEditor extends PureComponent<Props, State> {
       datasetName,
       baseDataset,
       datasetKey,
+      activeEnvironment,
     } = this.state;
     const {
+      environments,
       datasetPaneWidth,
       datasetPaneWidthType,
       handleToggleDatasetResizeType,
       handleSetRequestDatasetPaneRef,
       handleStartDragDatasetPaneHorizontal,
       handleResetDragDatasetPaneHorizontal,
+      settings,
+      activeWorkspace,
     } = this.props.wrapperProps;
     const isPercentageType = datasetPaneWidthType === DATASET_WIDTH_TYPE_PERCENTAGE;
     const isFixedType = datasetPaneWidthType === DATASET_WIDTH_TYPE_FIX_LEFT;
@@ -327,6 +351,14 @@ class DatasetRowEditor extends PureComponent<Props, State> {
               value={datasetName}
             />
           </h2>
+          {activeWorkspace && (<ChooseEnvironmentsDropdown
+            handleChangeEnvironment={this._handleChangeEnvironment}
+            activeEnvironment={activeEnvironment}
+            environments={environments}
+            workspace={activeWorkspace}
+            environmentHighlightColorStyle={settings.environmentHighlightColorStyle}
+            hotKeyRegistry={settings.hotKeyRegistry}
+          />)}
           <Button
             variant="text"
             onClick={this._handleOnGenerateCode}
