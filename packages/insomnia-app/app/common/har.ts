@@ -8,6 +8,7 @@ import * as models from '../models';
 import type { Cookie } from '../models/cookie-jar';
 import type { Request } from '../models/request';
 import { newBodyRaw } from '../models/request';
+import { RequestDataSet } from '../models/request-dataset';
 import type { Response } from '../models/response';
 import { isWorkspace } from '../models/workspace';
 import { getAuthHeader } from '../network/authentication';
@@ -306,23 +307,33 @@ export async function exportHarRequest(
   requestId: string,
   environmentId: string,
   addContentLength = false,
+  datasetId: string | undefined = undefined,
 ) {
   const request = await models.request.getById(requestId);
+
+  let dataset: RequestDataSet | null = null;
+  if (datasetId) {
+    dataset = await models.requestDataset.getById(datasetId);
+  }
+  if (!dataset) {
+    dataset = await models.requestDataset.getOrCreateForRequestId(requestId);
+  }
 
   if (!request) {
     return null;
   }
 
-  return exportHarWithRequest(request, environmentId, addContentLength);
+  return exportHarWithRequest(request, environmentId, addContentLength, dataset);
 }
 
 export async function exportHarWithRequest(
   request: Request,
   environmentId?: string,
   addContentLength = false,
+  dataset: RequestDataSet | undefined = undefined,
 ) {
   try {
-    const renderResult = await getRenderedRequestAndContext({ request, environmentId });
+    const renderResult = await getRenderedRequestAndContext({ request, environmentId, dataset });
     const renderedRequest = await _applyRequestPluginHooks(
       renderResult.request,
       renderResult.context,
@@ -424,7 +435,7 @@ function getResponseCookies(response: Response) {
 
       try {
         cookie = toughCookie.parse(harCookie.value || '');
-      } catch (error) {}
+      } catch (error) { }
 
       if (cookie === null || cookie === undefined) {
         return accumulator;

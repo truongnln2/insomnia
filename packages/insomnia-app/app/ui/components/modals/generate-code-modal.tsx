@@ -5,6 +5,7 @@ import React, { PureComponent } from 'react';
 import { AUTOBIND_CFG } from '../../../common/constants';
 import { exportHarRequest } from '../../../common/har';
 import { Request } from '../../../models/request';
+import { RequestDataSet } from '../../../models/request-dataset';
 import { CopyButton } from '../base/copy-button';
 import { Dropdown } from '../base/dropdown/dropdown';
 import { DropdownButton } from '../base/dropdown/dropdown-button';
@@ -14,7 +15,7 @@ import { Modal } from '../base/modal';
 import { ModalBody } from '../base/modal-body';
 import { ModalFooter } from '../base/modal-footer';
 import { ModalHeader } from '../base/modal-header';
-import { CodeEditor,  UnconnectedCodeEditor } from '../codemirror/code-editor';
+import { CodeEditor, UnconnectedCodeEditor } from '../codemirror/code-editor';
 
 const DEFAULT_TARGET = HTTPSnippet.availableTargets().find(t => t.key === 'shell') as HTTPSnippetTarget;
 const DEFAULT_CLIENT = DEFAULT_TARGET?.clients.find(t => t.key === 'curl') as HTTPSnippetClient;
@@ -54,11 +55,11 @@ export class GenerateCodeModal extends PureComponent<Props, State> {
     // Load preferences from localStorage
     try {
       target = JSON.parse(window.localStorage.getItem('insomnia::generateCode::target') || '') as HTTPSnippetTarget;
-    } catch (e) {}
+    } catch (e) { }
 
     try {
       client = JSON.parse(window.localStorage.getItem('insomnia::generateCode::client') || '') as HTTPSnippetClient;
-    } catch (e) {}
+    } catch (e) { }
 
     this.state = {
       cmd: '',
@@ -108,11 +109,16 @@ export class GenerateCodeModal extends PureComponent<Props, State> {
     this._generateCode(request, target, client);
   }
 
-  async _generateCode(request: Request, target: HTTPSnippetTarget, client: HTTPSnippetClient) {
+  async _generateCode(
+    request: Request
+    , target: HTTPSnippetTarget
+    , client: HTTPSnippetClient
+    , dataset?: RequestDataSet
+  ) {
     // Some clients need a content-length for the request to succeed
     const addContentLength = (TO_ADD_CONTENT_LENGTH[target.key] || []).find(c => c === client.key);
     const { environmentId } = this.props;
-    const har = await exportHarRequest(request._id, environmentId, addContentLength);
+    const har = await exportHarRequest(request._id, environmentId, addContentLength, dataset?._id);
     // @TODO Should we throw instead?
     if (!har) return;
     const snippet = new HTTPSnippet(har);
@@ -128,10 +134,10 @@ export class GenerateCodeModal extends PureComponent<Props, State> {
     window.localStorage.setItem('insomnia::generateCode::target', JSON.stringify(target));
   }
 
-  show(request: Request) {
+  show(request: Request, dataset?: RequestDataSet) {
     const { client, target } = this.state;
 
-    this._generateCode(request, target, client);
+    this._generateCode(request, target, client, dataset);
 
     this.modal?.show();
   }
