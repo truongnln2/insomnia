@@ -38,7 +38,7 @@ export interface NunjucksParsedTag {
   disablePreview?: (arg0: NunjucksParsedTagArg[]) => boolean;
 }
 
-interface Key {
+export interface Key {
   name: string;
   value: any;
   meta?: {

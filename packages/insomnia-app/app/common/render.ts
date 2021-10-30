@@ -66,9 +66,9 @@ export interface RenderContextAndKeys {
   }[];
 }
 
-export type HandleGetRenderContext = () => Promise<RenderContextAndKeys>;
+export type HandleGetRenderContext = (fieldSource?: string, source?: any) => Promise<RenderContextAndKeys>;
 
-export type HandleRender = <T>(object: T, contextCacheKey?: string | null) => Promise<T>;
+export type HandleRender = <T>(object: T, contextCacheKey?: string | null, fieldSource?: string | null, source?: any | null) => Promise<T>;
 
 function objectPathSetter(obj: any, paths: any[], value: any) {
   if (obj && paths && paths.length) {

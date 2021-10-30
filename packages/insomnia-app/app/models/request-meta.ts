@@ -47,6 +47,12 @@ export function init() {
     pinned: false,
     lastActive: 0,
     downloadPath: null,
+    datasetWidth: null,
+    datasetWidthType: null,
+    datasetShowAll: null,
+    visualizeEnabled: null,
+    visualizeTemplate: null,
+    visualizePowerUserMode: null,
   };
 }
 

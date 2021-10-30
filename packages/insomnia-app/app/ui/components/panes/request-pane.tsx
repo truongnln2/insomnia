@@ -4,7 +4,7 @@ import { deconstructQueryStringToParams, extractQueryStringFromUrl } from 'insom
 import React, { PureComponent } from 'react';
 import { Tab, TabList, TabPanel, Tabs } from 'react-tabs';
 
-import { AUTOBIND_CFG, getAuthTypeName, getContentTypeName } from '../../../common/constants';
+import { AUTOBIND_CFG, getAuthTypeName, getContentTypeName, REQUEST_UTIL_TABS_ORDER } from '../../../common/constants';
 import { HandleGetRenderContext, HandleRender } from '../../../common/render';
 import * as models from '../../../models';
 import { queryAllWorkspaceUrls } from '../../../models/helpers/query-all-workspace-urls';
@@ -20,16 +20,19 @@ import type { Settings } from '../../../models/settings';
 import type { Workspace } from '../../../models/workspace';
 import { AuthDropdown } from '../dropdowns/auth-dropdown';
 import { ContentTypeDropdown } from '../dropdowns/content-type-dropdown';
+import { RequestExtendTabDropdown } from '../dropdowns/request-extend-tab-dropdown';
 import { AuthWrapper } from '../editors/auth/auth-wrapper';
 import { BodyEditor } from '../editors/body/body-editor';
 import { RequestHeadersEditor } from '../editors/request-headers-editor';
 import { RequestParametersEditor } from '../editors/request-parameters-editor';
+import { RequestUtilsEditors } from '../editors/request-utils-editors';
 import { ErrorBoundary } from '../error-boundary';
 import { MarkdownPreview } from '../markdown-preview';
 import { showModal } from '../modals';
 import { RequestSettingsModal } from '../modals/request-settings-modal';
 import { RenderedQueryString } from '../rendered-query-string';
 import { RequestUrlBar } from '../request-url-bar';
+import { WrapperProps } from '../wrapper';
 import { Pane, paneBodyClasses, PaneHeader } from './pane';
 import { PlaceholderRequestPane } from './placeholder-request-pane';
 
@@ -64,10 +67,22 @@ interface Props {
   request?: Request | null;
   downloadPath: string | null;
   oAuth2Token?: OAuth2Token | null;
+  // dazzle updates
+  wrapperProps: WrapperProps;
 }
 
+interface State {
+  activeUtilTab: string;
+}
 @autoBindMethodsForReact(AUTOBIND_CFG)
-export class RequestPane extends PureComponent<Props> {
+export class RequestPane extends PureComponent<Props, State> {
+  constructor(props: Props) {
+    super(props);
+    this.state = {
+      activeUtilTab: REQUEST_UTIL_TABS_ORDER[0],
+    };
+  }
+
   _handleEditDescriptionAdd() {
     this._handleEditDescription(true);
   }
@@ -124,6 +139,20 @@ export class RequestPane extends PureComponent<Props> {
     }
   }
 
+  async _commonUpdateRequest(patch: Partial<Request>) {
+    const { request } = this.props;
+    if (request) {
+      return models.request.update(request, patch);
+    }
+    return null;
+  }
+
+  _changeUtilTab(item: string) {
+    this.setState({
+      activeUtilTab: item,
+    });
+  }
+
   render() {
     const {
       forceRefreshCounter,
@@ -152,7 +181,10 @@ export class RequestPane extends PureComponent<Props> {
       updateRequestUrl,
       headerEditorKey,
       downloadPath,
+      wrapperProps,
     } = this.props;
+    const { activeUtilTab } = this.state;
+    const { handleSendWithDataset } = wrapperProps;
     const hotKeyRegistry = settings.hotKeyRegistry;
 
     if (!request) {
@@ -245,6 +277,13 @@ export class RequestPane extends PureComponent<Props> {
                   </span>
                 )}
               </button>
+            </Tab>
+            <Tab tabIndex="=1">
+              <RequestExtendTabDropdown
+                onChange={this._changeUtilTab}
+                activeTab={activeUtilTab}
+                className={'tall'}
+              />
             </Tab>
           </TabList>
           <TabPanel key={uniqueKey} className="react-tabs__tab-panel editor-wrapper">
@@ -396,6 +435,26 @@ export class RequestPane extends PureComponent<Props> {
                 </p>
               </div>
             )}
+          </TabPanel>
+          <TabPanel className="react-tabs__tab-panel tall scrollable">
+            <ErrorBoundary key={uniqueKey} errorClassName="font-error pad text-center">
+              <RequestUtilsEditors
+                settings={settings}
+                wrapperProps={wrapperProps}
+                handleSendWithDataset={handleSendWithDataset}
+                activeTab={activeUtilTab}
+                models={models}
+                handleRender={handleRender}
+                handleGetRenderContext={handleGetRenderContext}
+                handleGenerateCode={handleGenerateCode}
+                nunjucksPowerUserMode={settings.nunjucksPowerUserMode}
+                isVariableUncovered={isVariableUncovered}
+                commonUpdateRequest={this._commonUpdateRequest}
+                request={request}
+                workspace={workspace}
+                environmentId={environmentId}
+              />
+            </ErrorBoundary>
           </TabPanel>
         </Tabs>
       </Pane>

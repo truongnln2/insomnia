@@ -122,6 +122,12 @@ export const MAX_INTERFACE_FONT_SIZE = 24;
 export const MIN_EDITOR_FONT_SIZE = 8;
 export const MAX_EDITOR_FONT_SIZE = 24;
 
+// dataset ui stuf
+export const MIN_DATASET_PANE_PERCENTAGE_WIDTH = 0.1;
+export const MAX_DATASET_PANE_PERCENTAGE_WIDTH = 0.9;
+export const MIN_DATASET_PANE_FIXED_WIDTH = 20;
+export const MAX_DATASET_PANE_FIXED_WIDTH = -20;
+
 // Activities
 export type GlobalActivity =
   | 'spec'
@@ -534,3 +540,20 @@ export const EXPORT_TYPE_PROTO_FILE = 'proto_file';
 export const EXPORT_TYPE_PROTO_DIRECTORY = 'proto_directory';
 export const EXPORT_TYPE_REQUEST_DATASET = 'request_dataset';
 export const EXPORT_TYPE_REQUEST_SETTER = 'request_setter';
+
+export const REQUEST_SETTER_EDITOR_TAB = 'REQUEST_SETTER_EDITOR_TAB';
+export const REQUEST_DATASET_EDITOR_TAB = 'REQUEST_DATASET_EDITOR_TAB';
+export const RESPONSE_VISUALIZE_EDITOR_TAB = 'RESPONSE_VISUALIZE_EDITOR_TAB';
+export const REQUEST_UTIL_TABS_TITLE = {
+  [REQUEST_DATASET_EDITOR_TAB]: 'Dataset',
+  [REQUEST_SETTER_EDITOR_TAB]: 'Event Setter',
+  [RESPONSE_VISUALIZE_EDITOR_TAB]: 'Visualize template',
+};
+export const REQUEST_UTIL_TABS_ORDER = [
+  REQUEST_DATASET_EDITOR_TAB,
+  REQUEST_SETTER_EDITOR_TAB,
+  RESPONSE_VISUALIZE_EDITOR_TAB,
+];
+
+export const DATASET_WIDTH_TYPE_PERCENTAGE = 'percentage';
+export const DATASET_WIDTH_TYPE_FIX_LEFT = 'fix_left';
