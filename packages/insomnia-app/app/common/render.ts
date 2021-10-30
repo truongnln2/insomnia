@@ -752,6 +752,7 @@ export async function getRenderedRequestAndContext(
       settingStoreCookies: renderedRequest.settingStoreCookies,
       settingRebuildPath: renderedRequest.settingRebuildPath,
       settingFollowRedirects: renderedRequest.settingFollowRedirects,
+      settingResponseVisualize: renderedRequest.settingResponseVisualize,
       type: renderedRequest.type,
       url: renderedRequest.url,
     },

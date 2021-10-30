@@ -25,7 +25,6 @@ interface BaseRequestMeta {
   datasetWidth: number | null;
   datasetWidthType: string | null;
   datasetShowAll: boolean | null;
-  visualizeEnabled: boolean | null;
   visualizeTemplate: string | null;
   visualizePowerUserMode: boolean | null;
 }
@@ -50,7 +49,6 @@ export function init() {
     datasetWidth: null,
     datasetWidthType: null,
     datasetShowAll: null,
-    visualizeEnabled: null,
     visualizeTemplate: null,
     visualizePowerUserMode: null,
   };

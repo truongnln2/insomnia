@@ -5,6 +5,7 @@ import styled from 'styled-components';
 
 import { AUTOBIND_CFG } from '../../../common/constants';
 import { HandleGetRenderContext, HandleRender } from '../../../common/render';
+import * as models from '../../../models';
 import { Request } from '../../../models/request';
 import { RequestMeta } from '../../../models/request-meta';
 import { Settings } from '../../../models/settings';
@@ -70,7 +71,7 @@ export class ResponseVisualizeEditor extends PureComponent<Props, State> {
       visualizeTemplate: props.requestMeta?.visualizeTemplate || '',
       metaId: props.requestMeta?._id || '',
       nunjucksPowerUserMode: props.requestMeta?.visualizePowerUserMode || false,
-      visualizationToggle: props.requestMeta?.visualizeEnabled || false,
+      visualizationToggle: props.request?.settingResponseVisualize || false,
       renderKey: 0,
     };
   }
@@ -145,11 +146,11 @@ export class ResponseVisualizeEditor extends PureComponent<Props, State> {
 
   _updateToggle() {
     const { visualizationToggle, renderKey } = this.state;
-    const { onChangeRequestMeta, request } = this.props;
+    const { request } = this.props;
 
-    onChangeRequestMeta({
-      visualizeEnabled: !visualizationToggle,
-    }, request._id);
+    models.request.update(request, {
+      settingResponseVisualize: !visualizationToggle,
+    });
 
     this.setState({
       visualizationToggle: !visualizationToggle,

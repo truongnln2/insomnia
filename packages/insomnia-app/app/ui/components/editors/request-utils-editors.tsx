@@ -5,6 +5,7 @@ import {
   AUTOBIND_CFG,
   REQUEST_DATASET_EDITOR_TAB,
   REQUEST_SETTER_EDITOR_TAB,
+  REQUEST_SETTING_TAB,
   RESPONSE_VISUALIZE_EDITOR_TAB,
 } from '../../../common/constants';
 import { HandleGetRenderContext, HandleRender } from '../../../common/render';
@@ -15,6 +16,7 @@ import { Workspace } from '../../../models/workspace';
 import { WrapperProps } from '../wrapper';
 import RequestDatasetEditor from './request-dataset-editor';
 import { RequestEventSetterEditors } from './request-event-setter-editor';
+import { RequestSettingsEditor } from './request-settings-editor';
 import { ResponseVisualizeEditor } from './response-visualize-editor';
 
 interface Props {
@@ -58,6 +60,7 @@ export class RequestUtilsEditors extends PureComponent<Props> {
     const {
       activeRequestMeta,
       handleUpdateActiveRequestMeta,
+      workspaces,
     } = wrapperProps;
     if (typeof activeTab === 'string') {
       switch (activeTab) {
@@ -98,6 +101,25 @@ export class RequestUtilsEditors extends PureComponent<Props> {
               settings={settings}
               onChangeRequestMeta={handleUpdateActiveRequestMeta}
             />
+          );
+        case REQUEST_SETTING_TAB:
+          return (
+            <div className="pad">
+              <RequestSettingsEditor
+                request={request}
+                workspace={workspace}
+                forceEditMode={false}
+                editorFontSize={settings.editorFontSize}
+                editorIndentSize={settings.editorIndentSize}
+                editorKeyMap={settings.editorKeyMap}
+                editorLineWrapping={settings.editorLineWrapping}
+                handleRender={handleRender}
+                handleGetRenderContext={handleGetRenderContext}
+                nunjucksPowerUserMode={nunjucksPowerUserMode}
+                workspaces={workspaces}
+                isVariableUncovered={isVariableUncovered}
+              />
+            </div>
           );
         default:
           return null;

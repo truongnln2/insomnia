@@ -63,7 +63,7 @@ interface Props {
   response?: Response | null;
   environment?: Environment | null;
   unitTestResult?: UnitTestResult | null;
-  requestMeta?: RequestMeta | null;
+  requestMeta: RequestMeta | undefined;
   handleRender: HandleRender;
 }
 
@@ -340,7 +340,7 @@ export class ResponsePane extends PureComponent<Props> {
             <Tab tabIndex="-1">
               <Button>Timeline</Button>
             </Tab>
-            {requestMeta?.visualizeEnabled ? (
+            {request?.settingResponseVisualize ? (
               <Tab tabIndex="-1">
                 <Button>Visualizer</Button>
               </Tab>
@@ -398,7 +398,7 @@ export class ResponsePane extends PureComponent<Props> {
               />
             </ErrorBoundary>
           </TabPanel>
-          {requestMeta?.visualizeEnabled ? (
+          {request?.settingResponseVisualize ? (
             <TabPanel className="react-tabs__tab-panel">
               <ErrorBoundary key={response._id} errorClassName="font-error pad text-center">
                 <ResponseVisualizeViewer
