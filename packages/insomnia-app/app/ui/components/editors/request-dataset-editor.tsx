@@ -164,6 +164,45 @@ class RequestDatasetEditor extends PureComponent<Props, State> {
     handleGenerateCode(request, dataset);
   }
 
+  async _handleDuplicate(dataset: RequestDataSet) {
+    const { otherDatasets, baseDataset } = this.state;
+    if (baseDataset) {
+      const duplicatingDataset = otherDatasets.filter(ds => ds._id === dataset._id)[0];
+      const duplicatedDataset = await models.requestDataset.duplicate(
+        duplicatingDataset,
+        {
+          parentId: baseDataset.parentId,
+        }
+      );
+      this._onChange(
+        baseDataset,
+        [
+          ...otherDatasets,
+          duplicatedDataset,
+        ],
+      );
+    }
+  }
+
+  async _handlePromoteToDefault(dataset: RequestDataSet) {
+    let { otherDatasets, baseDataset } = this.state;
+    let promotingDataset = otherDatasets.filter(ds => ds._id === dataset._id)[0];
+    if (promotingDataset && baseDataset) {
+      const promotingEnvironment = promotingDataset.environment;
+      const baseEnvironment = baseDataset.environment;
+      baseDataset = await models.requestDataset.update(baseDataset, {
+        environment: promotingEnvironment,
+      });
+      promotingDataset = await models.requestDataset.update(promotingDataset, {
+        environment: baseEnvironment,
+      });
+      otherDatasets = otherDatasets.map(
+        ds => ds._id === promotingDataset._id ? promotingDataset : ds
+      );
+      this._onChange(baseDataset, otherDatasets);
+    }
+  }
+
   _updateToggleEnvironmentFilter() {
     const { toggleEnvironmentFilter } = this.state;
     models.request.update(this.props.request, {
@@ -219,6 +258,8 @@ class RequestDatasetEditor extends PureComponent<Props, State> {
                   isVariableUncovered={isVariableUncovered}
                   handleRender={handleRender}
                   handleGetRenderContext={handleGetRenderContext}
+                  onPromoteToDefault={this._handlePromoteToDefault}
+                  onDuplicate={this._handleDuplicate}
                   onGenerateCodeWithDataset={this._handleGenerateCodeWithDataset}
                   dataset={dataset}
                   isBaseDataset={false}

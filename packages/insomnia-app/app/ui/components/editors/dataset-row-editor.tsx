@@ -29,6 +29,8 @@ interface Props {
   isBaseDataset: boolean;
   onChanged: (dataset: RequestDataSet) => void;
   onDeleteDataset?: (dataset: RequestDataSet) => void;
+  onPromoteToDefault?: (dataset: RequestDataSet) => void;
+  onDuplicate?: (dataset: RequestDataSet) => void;
   onSendWithDataset?: (dataset: RequestDataSet) => void;
   onGenerateCodeWithDataset?: (dataset: RequestDataSet) => void;
 }
@@ -45,6 +47,8 @@ interface State {
     name: string;
     value: string;
     description: string;
+    multiline: boolean;
+    type: string;
   }[];
 }
 
@@ -53,7 +57,7 @@ const StyledResultListItem = styled(ListGroupItem)`
 
   > div:first-of-type {
     display: grid;
-    grid-template-columns: auto auto minmax(0, 1fr) auto auto auto auto;
+    grid-template-columns: auto auto minmax(0, 1fr) auto auto auto auto auto auto;
     padding: var(--padding-xs) 0;
   }
 
@@ -118,6 +122,8 @@ class DatasetRowEditor extends PureComponent<Props, State> {
       metaSortKey: dataset.environment[k].metaSortKey,
       value: dataset.environment[k].value,
       description: dataset.environment[k].description,
+      multiline: dataset.environment[k].multiline,
+      type: 'text',
     })).sort(metaSortKeySort);
 
     const activeEnvironment = environments.find(e => e._id === dataset.applyEnv);
@@ -148,6 +154,7 @@ class DatasetRowEditor extends PureComponent<Props, State> {
         description: ds.description,
         value: ds.value,
         metaSortKey: ds.metaSortKey,
+        multiline: ds.multiline,
       };
       return obj;
     }, {});
@@ -167,6 +174,8 @@ class DatasetRowEditor extends PureComponent<Props, State> {
         metaSortKey: dataset.environment[k].metaSortKey,
         value: dataset.environment[k].value,
         description: dataset.environment[k].description,
+        multiline: dataset.environment[k].multiline,
+        type: 'text',
       })).sort(metaSortKeySort);
       return {
         ...prevState,
@@ -202,6 +211,7 @@ class DatasetRowEditor extends PureComponent<Props, State> {
           description: ds.description,
           value: ds.value,
           metaSortKey: ds.metaSortKey,
+          multiline: ds.multiline,
         };
         return obj;
       }, {}),
@@ -244,6 +254,20 @@ class DatasetRowEditor extends PureComponent<Props, State> {
     this.setState({
       activeEnvironment,
     });
+  }
+
+  _handleOnSetDefaultDataset() {
+    const { dataset, onPromoteToDefault } = this.props;
+    if (onPromoteToDefault) {
+      onPromoteToDefault(dataset);
+    }
+  }
+
+  _handleOnDuplicate() {
+    const { dataset, onDuplicate } = this.props;
+    if (onDuplicate) {
+      onDuplicate(dataset);
+    }
   }
 
   render() {
@@ -359,6 +383,23 @@ class DatasetRowEditor extends PureComponent<Props, State> {
             environmentHighlightColorStyle={settings.environmentHighlightColorStyle}
             hotKeyRegistry={settings.hotKeyRegistry}
           />)}
+          <PromptButton
+            key={Math.random()}
+            tabIndex={-1}
+            confirmMessage="Click to confirm"
+            addIcon
+            onClick={this._handleOnSetDefaultDataset}
+            title="Set as default dataset"
+          >
+            <i className="fa fa-certificate" />
+          </PromptButton>
+
+          <Button
+            variant="text"
+            onClick={this._handleOnDuplicate}
+          >
+            <i className="fa fa-files-o" />
+          </Button>
           <Button
             variant="text"
             onClick={this._handleOnGenerateCode}
@@ -400,6 +441,7 @@ class DatasetRowEditor extends PureComponent<Props, State> {
             handleRender={handleRender}
             readOnlyKey
             ignoreSuggestKey
+            allowMultiline
             handleGetRenderContext={handleGetRenderContext}
             handleGetAutocompleteNameConstants={DatasetRowEditor._getCommonNames}
             handleGetAutocompleteValueConstants={DatasetRowEditor._getCommonValues}

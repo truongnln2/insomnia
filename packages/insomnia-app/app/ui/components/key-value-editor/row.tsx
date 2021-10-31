@@ -260,6 +260,8 @@ class KeyValueEditorRow extends PureComponent<Props, State> {
       submitName: 'Done',
       title: `Edit ${pair.name}`,
       defaultValue: pair.value,
+      enableEditFontSize: true,
+      hideLineNumbers: false,
       onChange: this._handleValueChange,
       enableRender: handleRender || handleGetRenderContext,
       // @ts-expect-error -- TSCONVERSION
