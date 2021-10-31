@@ -69,6 +69,7 @@ export default class BaseFilter {
     const renderPurpose = renderContext.getPurpose ? renderContext.getPurpose() : null;
     // Pull out the environment ID
     const environmentId = renderContext.getEnvironmentId ? renderContext.getEnvironmentId() : 'n/a';
+    renderMeta.environmentId = environmentId;
     // Extract the rest of the args
     const args = runArgs
       .slice(0, runArgs.length - 1)
@@ -120,6 +121,7 @@ export default class BaseFilter {
             },
           },
           response: {
+            getAvailablesRequestId: models.response.getAvailablesForRequest,
             getLatestForRequestId: models.response.getLatestForRequest,
             getBodyBuffer: models.response.getBodyBuffer,
           },
@@ -145,10 +147,9 @@ export default class BaseFilter {
         .catch(err => {
           callback(err);
         });
-      return;
+    } else {
+      // If the result is not a Promise, return it synchronously
+      callback(null, result);
     }
-
-    // If the result is not a Promise, return it synchronously
-    callback(null, result);
   }
 }

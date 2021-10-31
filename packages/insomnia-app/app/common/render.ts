@@ -9,10 +9,11 @@ import type { CookieJar } from '../models/cookie-jar';
 import type { Environment } from '../models/environment';
 import type { GrpcRequest, GrpcRequestBody } from '../models/grpc-request';
 import { isProject, Project } from '../models/project';
-import type { Request } from '../models/request';
+import { isRequest, Request } from '../models/request';
 import { isRequestDataset, RequestDataSet } from '../models/request-dataset';
 import { isRequestGroup, RequestGroup } from '../models/request-group';
 import { RequestSetter, SetterEventType } from '../models/request-setter';
+import { isResponse } from '../models/response';
 import { isWorkspace, Workspace } from '../models/workspace';
 import * as templating from '../templating';
 import { NUNJUCKS_TEMPLATE_GLOBAL_PROPERTY_NAME, STATIC_CONTEXT_SOURCE_NAME } from '../templating';
@@ -541,8 +542,12 @@ export async function getRenderContext(
   // Add meta data helper function
   const baseContext: Record<string, any> = {};
 
+  const currentResponse = isResponse(request as any) ? request : null;
+  const currentRequest = isResponse(request as any) ? _ancestors?.find(isRequest) : request;
+
   baseContext.getMeta = () => ({
-    requestId: request ? request._id : null,
+    responseId: currentResponse ? currentResponse._id : null,
+    requestId: currentRequest ? currentRequest._id : null,
     workspaceId: workspace ? workspace._id : 'n/a',
   });
 

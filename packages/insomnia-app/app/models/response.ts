@@ -173,6 +173,15 @@ export async function getLatestForRequest(
   return response || null;
 }
 
+export async function getAvailablesForRequest(
+  requestId: string,
+  top: number,
+  environmentId: string | null,
+) {
+  const responses = await _findRecentForRequest(requestId, environmentId, 1);
+  return responses.slice(0, top);
+}
+
 export async function create(patch: Record<string, any> = {}, maxResponses = 20) {
   if (!patch.parentId) {
     throw new Error('New Response missing `parentId`');

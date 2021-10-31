@@ -1,5 +1,7 @@
-
 import { PluginTemplateFilter } from '../extensions';
+import currentRequest from './current-request';
+import currentResponse from './current-response';
+import domXPath from './dom-xpath';
 import jmespath from './jmespath';
 import jsonDiff from './json-diff';
 import jsonParse from './json-parse';
@@ -18,6 +20,9 @@ const filters: PluginTemplateFilter[] = [
   processNumber,
   transformUriComponent,
   stringReplace,
+  currentRequest,
+  currentResponse,
+  domXPath,
 ];
 
 export default filters;
