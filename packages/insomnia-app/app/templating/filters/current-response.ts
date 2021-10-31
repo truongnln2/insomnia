@@ -40,11 +40,12 @@ const currentResponseFilter: PluginTemplateFilter = {
       displayName: 'Include body',
       type: 'enum',
       options: [
+        { displayName: 'None', value: '' },
         { displayName: 'JSON body', value: 'json' },
         { displayName: 'XML body', value: 'xml' },
         { displayName: 'Raw string body', value: 'raw' },
       ],
-      defaultValue: 'no',
+      defaultValue: '',
     },
   ],
   description: '',
@@ -64,7 +65,7 @@ const currentResponseFilter: PluginTemplateFilter = {
       }
     }
     let body: any = null;
-    if (isIncludeBody && isIncludeBody !== 'no' && response) {
+    if (isIncludeBody && response) {
       body = await getResponseBody(_ctx, (response as any));
       switch (isIncludeBody) {
         case 'json':
