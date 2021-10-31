@@ -4,25 +4,31 @@ import fs from 'fs';
 import HTTPSnippet from 'httpsnippet';
 import * as mime from 'mime-types';
 import * as path from 'path';
-import React, { createRef, PureComponent } from 'react';
+import React, { createRef, PureComponent, RefObject } from 'react';
 import { connect } from 'react-redux';
 import { Action, bindActionCreators, Dispatch } from 'redux';
 import { parse as urlParse } from 'url';
 
-import {  SegmentEvent, trackSegmentEvent } from '../../common/analytics';
+import { SegmentEvent, trackSegmentEvent } from '../../common/analytics';
 import {
   ACTIVITY_HOME,
   ACTIVITY_MIGRATION,
   AUTOBIND_CFG,
   COLLAPSE_SIDEBAR_REMS,
+  DATASET_WIDTH_TYPE_FIX_LEFT,
+  DATASET_WIDTH_TYPE_PERCENTAGE,
   DEFAULT_PANE_HEIGHT,
   DEFAULT_PANE_WIDTH,
   DEFAULT_SIDEBAR_WIDTH,
   getAppName,
   isDevelopment,
+  MAX_DATASET_PANE_FIXED_WIDTH,
+  MAX_DATASET_PANE_PERCENTAGE_WIDTH,
   MAX_PANE_HEIGHT,
   MAX_PANE_WIDTH,
   MAX_SIDEBAR_REMS,
+  MIN_DATASET_PANE_FIXED_WIDTH,
+  MIN_DATASET_PANE_PERCENTAGE_WIDTH,
   MIN_PANE_HEIGHT,
   MIN_PANE_WIDTH,
   MIN_SIDEBAR_REMS,
@@ -49,6 +55,7 @@ import { GrpcRequestMeta } from '../../models/grpc-request-meta';
 import * as requestOperations from '../../models/helpers/request-operations';
 import { isNotDefaultProject } from '../../models/project';
 import { Request, updateMimeType } from '../../models/request';
+import { RequestDataSet } from '../../models/request-dataset';
 import { isRequestGroup, RequestGroup } from '../../models/request-group';
 import { RequestMeta } from '../../models/request-meta';
 import { Response } from '../../models/response';
@@ -141,6 +148,10 @@ interface State {
   forceRefreshCounter: number;
   forceRefreshHeaderCounter: number;
   isMigratingChildren: boolean;
+  // dazzle update
+  datasetPaneWidth: number;
+  datasetPaneWidthType: string;
+  draggingDatasetPane: boolean;
 }
 
 @autoBindMethodsForReact(AUTOBIND_CFG)
@@ -156,6 +167,9 @@ class App extends PureComponent<AppProps, State> {
   private _sidebarRef = createRef<HTMLElement>();
   private _wrapper: Wrapper | null = null;
   private _responseFilterHistorySaveTimeout: NodeJS.Timeout | null = null;
+  // dazzle update
+  private _requestDatasetPane: RefObject<any>;
+  private _saveDatasetPaneWidth: (paneWidth: number) => void;
 
   constructor(props: AppProps) {
     super(props);
@@ -174,6 +188,10 @@ class App extends PureComponent<AppProps, State> {
       forceRefreshCounter: 0,
       forceRefreshHeaderCounter: 0,
       isMigratingChildren: false,
+      // dazzle update
+      datasetPaneWidth: props.datasetPaneWidth || DEFAULT_PANE_WIDTH,
+      datasetPaneWidthType: props.datasetPaneWidthType || DATASET_WIDTH_TYPE_PERCENTAGE,
+      draggingDatasetPane: false,
     };
 
     this._getRenderContextPromiseCache = {};
@@ -194,6 +212,12 @@ class App extends PureComponent<AppProps, State> {
     );
     this._globalKeyMap = null;
     this._updateVCSLock = null;
+    // dazzle update
+    this._saveDatasetPaneWidth = debounce(paneWidth =>
+      this._updateActiveRequestMeta({
+        datasetWidth: paneWidth,
+      }),
+    );
   }
 
   _setGlobalKeyMap() {
@@ -381,6 +405,46 @@ class App extends PureComponent<AppProps, State> {
     );
   }
 
+  _getOffsetLeft(elem: any) {
+    let offsetLeft = 0;
+    do {
+      if (!isNaN(elem.offsetLeft)) {
+        offsetLeft += elem.offsetLeft;
+      }
+      // eslint-disable-next-line no-cond-assign
+    } while (elem = elem.offsetParent);
+    return offsetLeft;
+  }
+
+  _setRequestDatasetPaneRef(n: RefObject<any>) {
+    this._requestDatasetPane = n;
+  }
+
+  _handleSetDatasetPaneWidth(paneWidth: number) {
+    this.setState({
+      datasetPaneWidth: paneWidth,
+    });
+
+    this._saveDatasetPaneWidth(paneWidth);
+  }
+
+  _startDragDatasetPaneHorizontal() {
+    this.setState({
+      draggingDatasetPane: true,
+    });
+  }
+
+  _resetDragDatasetPaneHorizontal() {
+    // TODO: Remove setTimeout need be not triggering drag on double click
+    setTimeout(() => this._handleSetDatasetPaneWidth(DEFAULT_PANE_WIDTH), 50);
+  }
+
+  _handleSendRequestWithActiveEnvironmentAndDataset(request: Request, dataset: RequestDataSet) {
+    const { activeEnvironment } = this.props;
+    const activeEnvironmentId = activeEnvironment ? activeEnvironment._id : 'n/a';
+    this._handleSendRequestWithEnvironment(request._id, activeEnvironmentId, dataset);
+  }
+
   _requestGroupCreate(parentId: string) {
     showPrompt({
       title: 'New Folder',
@@ -488,9 +552,54 @@ class App extends PureComponent<AppProps, State> {
     });
   }
 
-  async _fetchRenderContext() {
+  async _fetchRenderContext(fieldSource?: string, source?: any) {
     const { activeEnvironment, activeRequest, activeWorkspace } = this.props;
     const ancestors = await render.getRenderContextAncestors(activeRequest || activeWorkspace);
+
+    const environmentId = activeEnvironment?._id;
+    let dataset;
+    let hasFieldSourceFlg = true;
+    if (fieldSource === 'request') {
+      if (source) {
+        dataset = await models.requestDataset.getOrCreateForRequestId(source._id);
+        return render.getRenderContext({
+          request: source, environmentId, ancestors, dataset,
+        });
+      }
+    } else if (fieldSource === 'response') {
+      if (source) {
+        const response = (source as Response);
+        const baseDataset = await models.requestDataset.getOrCreateForRequestId(response.parentId);
+        const requestDataset = await models.requestDataset.getById(response.dataset?._id || 'n/a');
+        const environment = Object.assign(
+          {},
+          baseDataset?.environment,
+          requestDataset?.environment,
+          response.dataset?.environment,
+        );
+        dataset = Object.assign(
+          {},
+          response.dataset,
+          { environment },
+        );
+        if (dataset) {
+          return render.getRenderContext({
+            request: source, environmentId, ancestors, dataset,
+          });
+        } else {
+          source = null;
+        }
+      }
+    } else {
+      hasFieldSourceFlg = false;
+    }
+    if (!source && hasFieldSourceFlg && activeRequest) {
+      dataset = await models.requestDataset.getOrCreateForRequestId(activeRequest._id);
+      return render.getRenderContext({
+        request: activeRequest, environmentId, ancestors, dataset,
+      });
+    }
+
     return render.getRenderContext({
       request: activeRequest || undefined,
       environmentId: activeEnvironment?._id,
@@ -498,8 +607,8 @@ class App extends PureComponent<AppProps, State> {
     });
   }
 
-  async _handleGetRenderContext(): Promise<RenderContextAndKeys> {
-    const context = await this._fetchRenderContext();
+  async _handleGetRenderContext(fieldSource?: string, source?: any): Promise<RenderContextAndKeys> {
+    const context = await this._fetchRenderContext(fieldSource, source);
     const keys = getKeys(context, NUNJUCKS_TEMPLATE_GLOBAL_PROPERTY_NAME);
     return {
       context,
@@ -515,11 +624,11 @@ class App extends PureComponent<AppProps, State> {
    * @returns {Promise}
    * @private
    */
-  async _handleRenderText<T>(obj: T, contextCacheKey: string | null = null) {
+  async _handleRenderText<T>(obj: T, contextCacheKey: string | null = null, fieldSource?: string, source?: any) {
     if (!contextCacheKey || !this._getRenderContextPromiseCache[contextCacheKey]) {
       // NOTE: We're caching promises here to avoid race conditions
       // @ts-expect-error -- TSCONVERSION contextCacheKey being null used as object index
-      this._getRenderContextPromiseCache[contextCacheKey] = this._fetchRenderContext();
+      this._getRenderContextPromiseCache[contextCacheKey] = this._fetchRenderContext(fieldSource, source);
     }
 
     // Set timeout to delete the key eventually
@@ -530,13 +639,13 @@ class App extends PureComponent<AppProps, State> {
     return render.render(obj, context);
   }
 
-  _handleGenerateCodeForActiveRequest() {
+  _handleGenerateCodeForActiveRequest(request?: Request, dataset?: RequestDataSet) {
     // @ts-expect-error -- TSCONVERSION should skip this if active request is grpc request
-    App._handleGenerateCode(this.props.activeRequest);
+    App._handleGenerateCode(request || this.props.activeRequest, dataset);
   }
 
-  static _handleGenerateCode(request: Request) {
-    showModal(GenerateCodeModal, request);
+  static _handleGenerateCode(request: Request, dataset?: RequestDataSet) {
+    showModal(GenerateCodeModal, request, dataset);
   }
 
   async _handleCopyAsCurl(request: Request) {
@@ -573,6 +682,19 @@ class App extends PureComponent<AppProps, State> {
 
     if (activeWorkspaceMeta) {
       await models.workspaceMeta.update(activeWorkspaceMeta, patch);
+    }
+  }
+
+  async _updateActiveRequestMeta(patch: Partial<RequestMeta>, requestId?: string) {
+    const { activeRequest } = this.props;
+    requestId = requestId || activeRequest?._id;
+    if (requestId) {
+      const isGrpc = isGrpcRequestId(requestId);
+      if (isGrpc) {
+        await models.grpcRequestMeta.updateOrCreateByParentId(requestId, patch);
+      } else {
+        await models.requestMeta.updateOrCreateByParentId(requestId, patch);
+      }
     }
   }
 
@@ -836,7 +958,7 @@ class App extends PureComponent<AppProps, State> {
     }
   }
 
-  async _handleSendRequestWithEnvironment(requestId, environmentId) {
+  async _handleSendRequestWithEnvironment(requestId, environmentId, dataset?) {
     const { handleStartLoading, handleStopLoading, settings } = this.props;
     const request = await models.request.getById(requestId);
 
@@ -849,8 +971,12 @@ class App extends PureComponent<AppProps, State> {
     trackSegmentEvent(SegmentEvent.requestExecute);
     handleStartLoading(requestId);
 
+    if (!dataset) {
+      dataset = await models.requestDataset.getOrCreateForRequest(request);
+    }
+
     try {
-      const responsePatch = await network.send(requestId, environmentId);
+      const responsePatch = await network.send(requestId, environmentId, undefined, dataset._id);
       await models.response.create(responsePatch, settings.maxHistoryResponses);
     } catch (err) {
       if (err.type === 'render') {
@@ -915,6 +1041,24 @@ class App extends PureComponent<AppProps, State> {
   _requestCreateForWorkspace() {
     if (this.props.activeWorkspace) {
       this._requestCreate(this.props.activeWorkspace._id);
+    }
+  }
+
+  _toggleDatasetResizeType() {
+    const requestPane = this._requestDatasetPane as any;
+    const requestPaneWidth = requestPane.offsetWidth;
+    if (this.props.datasetPaneWidthType === DATASET_WIDTH_TYPE_PERCENTAGE) {
+      const fixedWidth = this.props.datasetPaneWidth * requestPaneWidth;
+      this._updateActiveRequestMeta({
+        datasetWidth: fixedWidth,
+        datasetWidthType: DATASET_WIDTH_TYPE_FIX_LEFT,
+      });
+    } else if (this.props.datasetPaneWidthType === DATASET_WIDTH_TYPE_FIX_LEFT) {
+      const percentageWidth = this.props.datasetPaneWidth / requestPaneWidth;
+      this._updateActiveRequestMeta({
+        datasetWidth: percentageWidth,
+        datasetWidthType: DATASET_WIDTH_TYPE_PERCENTAGE,
+      });
     }
   }
 
@@ -1034,6 +1178,34 @@ class App extends PureComponent<AppProps, State> {
 
         this._handleSetSidebarWidth(sidebarWidth);
       }
+    } else if (this.state.draggingDatasetPane) {
+      // Only pop the overlay after we've moved it a bit (so we don't block doubleclick);
+      const distance = this.props.datasetPaneWidth - this.state.datasetPaneWidth;
+
+      if (
+        !this.state.showDragOverlay &&
+        Math.abs(distance) > 2
+        /* ems */
+      ) {
+        this.setState({
+          showDragOverlay: true,
+        });
+      }
+
+      const widthType = this.state.datasetPaneWidthType;
+
+      const requestPane = this._requestDatasetPane as any;
+      const requestPaneWidth = requestPane.offsetWidth;
+      const paneOffset = this._getOffsetLeft(requestPane);
+      const pixelOffset = e.clientX - paneOffset;
+      let paneWidth: number;
+      if (widthType === DATASET_WIDTH_TYPE_PERCENTAGE) {
+        paneWidth = (pixelOffset + 10) / (requestPaneWidth);
+        paneWidth = Math.min(Math.max(paneWidth, MIN_DATASET_PANE_PERCENTAGE_WIDTH), MAX_DATASET_PANE_PERCENTAGE_WIDTH);
+      } else {
+        paneWidth = Math.min(Math.max(pixelOffset, MIN_DATASET_PANE_FIXED_WIDTH), requestPaneWidth + MAX_DATASET_PANE_FIXED_WIDTH);
+      }
+      this._handleSetDatasetPaneWidth(paneWidth);
     }
   }
 
@@ -1055,6 +1227,13 @@ class App extends PureComponent<AppProps, State> {
     if (this.state.draggingPaneVertical) {
       this.setState({
         draggingPaneVertical: false,
+        showDragOverlay: false,
+      });
+    }
+
+    if (this.state.draggingDatasetPane) {
+      this.setState({
+        draggingDatasetPane: false,
         showDragOverlay: false,
       });
     }
@@ -1124,6 +1303,26 @@ class App extends PureComponent<AppProps, State> {
     this._updateDocumentTitle();
 
     this._ensureWorkspaceChildren();
+
+    const {
+      datasetPaneWidth,
+      datasetPaneWidthType,
+    } = this.props;
+    if (prevProps.activeRequest?._id !== this.props.activeRequest?._id) {
+      if (this.props.activeRequest) {
+        this.setState({
+          datasetPaneWidth,
+          datasetPaneWidthType,
+        });
+      }
+    } else {
+      if (this.props.activeRequest && datasetPaneWidthType !== prevProps.datasetPaneWidthType) {
+        this.setState({
+          datasetPaneWidth: datasetPaneWidth,
+          datasetPaneWidthType,
+        });
+      }
+    }
 
     // Force app refresh if login state changes
     if (prevProps.isLoggedIn !== this.props.isLoggedIn) {
@@ -1499,6 +1698,8 @@ class App extends PureComponent<AppProps, State> {
       vcs,
       forceRefreshCounter,
       forceRefreshHeaderCounter,
+      datasetPaneWidth,
+      datasetPaneWidthType,
     } = this.state;
     const uniquenessKey = `${forceRefreshCounter}::${activeWorkspace?._id || 'n/a'}`;
     return (
@@ -1553,6 +1754,15 @@ class App extends PureComponent<AppProps, State> {
                 handleSidebarSort={this._sortSidebar}
                 vcs={vcs}
                 gitVCS={gitVCS}
+                // dazzle update
+                datasetPaneWidth={datasetPaneWidth}
+                datasetPaneWidthType={datasetPaneWidthType}
+                handleUpdateActiveRequestMeta={this._updateActiveRequestMeta}
+                handleToggleDatasetResizeType={this._toggleDatasetResizeType}
+                handleSetRequestDatasetPaneRef={this._setRequestDatasetPaneRef}
+                handleStartDragDatasetPaneHorizontal={this._startDragDatasetPaneHorizontal}
+                handleResetDragDatasetPaneHorizontal={this._resetDragDatasetPaneHorizontal}
+                handleSendWithDataset={this._handleSendRequestWithActiveEnvironmentAndDataset}
               />
             </ErrorBoundary>
 
@@ -1641,6 +1851,10 @@ function mapStateToProps(state: RootState) {
   const activeUnitTestSuites = selectActiveUnitTestSuites(state);
   const activeUnitTestResult = selectActiveUnitTestResult(state);
 
+  // Dazzle stuff
+  const datasetPaneWidth = requestMeta?.datasetWidth || DEFAULT_PANE_WIDTH;
+  const datasetPaneWidthType = requestMeta?.datasetWidthType || DATASET_WIDTH_TYPE_PERCENTAGE;
+
   return {
     activity: activeActivity,
     activeProject,
@@ -1686,6 +1900,10 @@ function mapStateToProps(state: RootState) {
     workspaceChildren,
     workspaces,
     workspaceMetas,
+    // dazzle updates
+    activeRequestMeta: requestMeta,
+    datasetPaneWidth,
+    datasetPaneWidthType,
   };
 }
 

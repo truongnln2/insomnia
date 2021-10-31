@@ -1,19 +1,27 @@
 import clone from 'clone';
 import { setDefaultProtocol } from 'insomnia-url';
 import orderedJSON from 'json-order';
+import jsonpath from 'jsonpath';
 
 import * as models from '../models';
+import { BaseModel } from '../models';
 import type { CookieJar } from '../models/cookie-jar';
 import type { Environment } from '../models/environment';
 import type { GrpcRequest, GrpcRequestBody } from '../models/grpc-request';
 import { isProject, Project } from '../models/project';
-import type { Request } from '../models/request';
+import { isRequest, Request } from '../models/request';
+import { isRequestDataset, RequestDataSet } from '../models/request-dataset';
 import { isRequestGroup, RequestGroup } from '../models/request-group';
+import { RequestSetter, SetterEventType } from '../models/request-setter';
+import { isResponse } from '../models/response';
 import { isWorkspace, Workspace } from '../models/workspace';
 import * as templating from '../templating';
+import { NUNJUCKS_TEMPLATE_GLOBAL_PROPERTY_NAME, STATIC_CONTEXT_SOURCE_NAME } from '../templating';
 import * as templatingUtils from '../templating/utils';
+import { getKeys, META_KEY } from '../templating/utils';
 import { CONTENT_TYPE_GRAPHQL, JSON_ORDER_SEPARATOR } from './constants';
 import { database as db } from './database';
+import { metaSortKeySort } from './sorting';
 
 export const KEEP_ON_ERROR = 'keep';
 export const THROW_ON_ERROR = 'throw';
@@ -21,6 +29,16 @@ export type RenderPurpose = 'send' | 'general' | 'no-render';
 export const RENDER_PURPOSE_SEND: RenderPurpose = 'send';
 export const RENDER_PURPOSE_GENERAL: RenderPurpose = 'general';
 export const RENDER_PURPOSE_NO_RENDER: RenderPurpose = 'no-render';
+
+export interface RenderKey {
+  name: string;
+  value: any;
+  meta?: {
+    name: string;
+    type: string;
+    id: string;
+  };
+}
 
 /** Key/value pairs to be provided to the render context */
 export type ExtraRenderInfo = {
@@ -49,9 +67,91 @@ export interface RenderContextAndKeys {
   }[];
 }
 
-export type HandleGetRenderContext = () => Promise<RenderContextAndKeys>;
+export type HandleGetRenderContext = (fieldSource?: string, source?: any) => Promise<RenderContextAndKeys>;
 
-export type HandleRender = <T>(object: T, contextCacheKey?: string | null) => Promise<T>;
+export type HandleRender = <T>(object: T, contextCacheKey?: string | null, fieldSource?: string | null, source?: any | null) => Promise<T>;
+
+function objectPathSetter(obj: any, paths: any[], value: any) {
+  if (obj && paths && paths.length) {
+    if (paths.length === 1) {
+      obj[paths[0]] = value;
+    } else if (paths[0] === '$') {
+      objectPathSetter(obj, paths.slice(1), value);
+    } else {
+      objectPathSetter(obj[paths[0]], paths.slice(1), value);
+    }
+  }
+}
+
+export async function executeSetter(
+  setters: RequestSetter[],
+  renderContext: any,
+  ancestors: BaseModel[],
+  environmentId?: string | null,
+  dataset?: RequestDataSet | null,
+) {
+  const workspace = ancestors.find(isWorkspace);
+  const rootEnvironment = await models.environment.getOrCreateForParentId(
+    workspace ? workspace._id : 'n/a',
+  );
+  const subEnvironment = await models.environment.getById(environmentId || 'n/a');
+  const updatedSources: { [id: string]: BaseModel } = {};
+  const keys = getKeys(renderContext, NUNJUCKS_TEMPLATE_GLOBAL_PROPERTY_NAME);
+  for (const setter of setters.filter(s => s.enabled)) {
+    try {
+      if (setter.objectKey) {
+        const keyMatched = keys.find(k => k.name === setter.objectKey);
+        if (keyMatched) {
+          const value = await await render(
+            setter.setterValue,
+            renderContext,
+          );
+          const contextPaths = jsonpath.paths(renderContext, setter.objectKey.replace(/^_/, '$'))[0];
+          objectPathSetter(renderContext, contextPaths, value);
+          const sourceId = keyMatched.meta?.id;
+          const sourceType = keyMatched.meta?.type;
+          const matchSource = ancestors.find(a => a._id === sourceId && a.type === sourceType);
+          if (
+            !matchSource &&
+            sourceType === models.environment.type
+          ) {
+            let matchEnv: Environment | null = null;
+            if (rootEnvironment && sourceId === rootEnvironment._id) {
+              matchEnv = rootEnvironment;
+            } else if (subEnvironment && sourceId === subEnvironment._id) {
+              matchEnv = subEnvironment;
+            }
+            if (matchEnv) {
+              const paths = jsonpath.paths(matchEnv.data, setter.objectKey.replace(/^_/, '$'))[0];
+              if (paths) {
+                objectPathSetter(matchEnv.data, paths, value);
+                updatedSources[matchEnv._id] = matchEnv;
+              }
+            }
+          } else if (dataset && sourceType === models.requestDataset.type) {
+            Object.values(dataset.environment).forEach(kp => {
+              if (`_.${kp.name}` === setter.objectKey) {
+                kp.value = value;
+              }
+            });
+            updatedSources[dataset._id] = dataset;
+          } else if (matchSource && matchSource.hasOwnProperty('environment')) {
+            const sourceEnv = (matchSource as any).environment;
+            const paths = jsonpath.paths(sourceEnv, setter.objectKey.replace(/^_/, '$'))[0];
+            objectPathSetter(sourceEnv, paths, value);
+            updatedSources[matchSource._id] = matchSource;
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Setter error', err);
+    }
+  }
+  await Promise.all(
+    Object.values(updatedSources)
+      .map(m => db.docUpdate(m, m)),
+  );
+}
 
 export async function buildRenderContext(
   {
@@ -59,14 +159,23 @@ export async function buildRenderContext(
     rootEnvironment,
     subEnvironment,
     baseContext = {},
+    staticVariables = {},
   }: {
     ancestors?: RenderContextAncestor[];
     rootEnvironment?: Environment;
     subEnvironment?: Environment;
     baseContext?: Record<string, any>;
+    staticVariables?: Record<string, any>;
   },
 ) {
   const envObjects: Record<string, any>[] = [];
+
+  envObjects.push({
+    sourceType: STATIC_CONTEXT_SOURCE_NAME,
+    sourceId: 'n/a',
+    sourceName: STATIC_CONTEXT_SOURCE_NAME,
+    ordered: staticVariables,
+  });
 
   // Get root environment keys in correct order
   // Then get sub environment keys in correct order
@@ -77,7 +186,12 @@ export async function buildRenderContext(
       rootEnvironment.dataPropertyOrder,
       JSON_ORDER_SEPARATOR,
     );
-    envObjects.push(ordered);
+    envObjects.push({
+      sourceType: rootEnvironment.type,
+      sourceId: rootEnvironment._id,
+      sourceName: rootEnvironment.name,
+      ordered,
+    });
   }
 
   if (subEnvironment) {
@@ -86,7 +200,12 @@ export async function buildRenderContext(
       subEnvironment.dataPropertyOrder,
       JSON_ORDER_SEPARATOR,
     );
-    envObjects.push(ordered);
+    envObjects.push({
+      sourceType: subEnvironment.type,
+      sourceId: subEnvironment._id,
+      sourceName: subEnvironment.name,
+      ordered,
+    });
   }
 
   for (const doc of (ancestors || []).reverse()) {
@@ -99,7 +218,12 @@ export async function buildRenderContext(
         environmentPropertyOrder,
         JSON_ORDER_SEPARATOR,
       );
-      envObjects.push(ordered);
+      envObjects.push({
+        sourceType: ancestor.type,
+        sourceName: ancestor.type,
+        sourceId: ancestor._id,
+        ordered,
+      });
     }
   }
 
@@ -109,11 +233,14 @@ export async function buildRenderContext(
   // Do an Object.assign, but render each property as it overwrites. This
   // way we can keep same-name variables from the parent context.
   let renderContext = baseContext;
+  let metaContext = {};
 
   // Made the rendering into a recursive function to handle nested Objects
   async function renderSubContext(
     subObject: Record<string, any>,
     subContext: Record<string, any>,
+    subMetaContext: Record<string, any>,
+    metaData: Record<string, any>,
   ) {
     const keys = _getOrderedEnvironmentKeys(subObject);
 
@@ -148,19 +275,34 @@ export async function buildRenderContext(
         }
       } else if (Object.prototype.toString.call(subContext[key]) === '[object Object]') {
         // Context is of Type object, Call this function recursively to handle nested objects.
-        subContext[key] = renderSubContext(subObject[key], subContext[key]);
+        const { context, meta } = await renderSubContext(
+          subObject[key], subContext[key], subMetaContext[key] || {}, metaData,
+        );
+        subContext[key] = context;
+        subMetaContext[key] = meta;
       } else {
         // For all other Types, add the Object to the Context.
         subContext[key] = subObject[key];
       }
+      subMetaContext[key] = { ...metaData };
     }
 
-    return subContext;
+    return {
+      context: subContext,
+      meta: subMetaContext,
+    };
   }
 
   for (const envObject of envObjects) {
     // For every environment render the Objects
-    renderContext = await renderSubContext(envObject, renderContext);
+    const { context, meta } = await renderSubContext(
+      envObject.ordered, renderContext, metaContext,
+      {
+        name: envObject.sourceName, type: envObject.sourceType, id: envObject.sourceId,
+      },
+    );
+    renderContext = context;
+    metaContext = meta;
   }
 
   // Render the context with itself to fill in the rest.
@@ -198,6 +340,7 @@ export async function buildRenderContext(
       finalRenderContext[key] = renderResult;
     }
   }
+  finalRenderContext[META_KEY] = metaContext;
 
   return finalRenderContext;
 }
@@ -295,6 +438,8 @@ interface BaseRenderContextOptions {
   environmentId?: string;
   purpose?: RenderPurpose;
   extraInfo?: ExtraRenderInfo;
+  dataset?: RequestDataSet | null;
+  requestSetters?: RequestSetter[] | null;
 }
 
 interface RenderContextOptions extends BaseRenderContextOptions, Partial<RenderRequest<Request | GrpcRequest>> {
@@ -307,6 +452,7 @@ export async function getRenderContext(
     ancestors: _ancestors,
     purpose,
     extraInfo,
+    dataset,
   }: RenderContextOptions,
 ): Promise<Record<string, any>> {
   const ancestors = _ancestors || await getRenderContextAncestors(request);
@@ -356,11 +502,35 @@ export async function getRenderContext(
 
   // Get Keys from ancestors (e.g. Folders)
   if (ancestors) {
+    if (dataset && dataset.environment) {
+      const currentDataset = ancestors.find(isRequestDataset) || dataset;
+      currentDataset.environmentPropertyOrder = {
+        '&': Object.values(dataset.environment).sort(metaSortKeySort).map(ds => ds.name),
+      };
+      currentDataset.environment = Object.keys(dataset.environment)
+        .reduce((env, key) => Object.assign(
+          env, { [dataset.environment[key].name]: dataset.environment[key].value },
+        ), {});
+      if (currentDataset === dataset) {
+        if (request) {
+          const index = ancestors.indexOf(request);
+          ancestors.splice(index + 1, 0, dataset);
+        } else {
+          ancestors.push(dataset);
+        }
+      }
+    }
     for (let idx = 0; idx < ancestors.length; idx++) {
       const ancestor: any = ancestors[idx] || {};
 
       if (
         isRequestGroup(ancestor) &&
+        ancestor.hasOwnProperty('environment') &&
+        ancestor.hasOwnProperty('name')
+      ) {
+        getKeySource(ancestor.environment || {}, inKey, ancestor.name || '');
+      } else if (
+        isRequestDataset(ancestor) &&
         ancestor.hasOwnProperty('environment') &&
         ancestor.hasOwnProperty('name')
       ) {
@@ -372,8 +542,12 @@ export async function getRenderContext(
   // Add meta data helper function
   const baseContext: Record<string, any> = {};
 
+  const currentResponse = isResponse(request as any) ? request : null;
+  const currentRequest = isResponse(request as any) ? _ancestors?.find(isRequest) : request;
+
   baseContext.getMeta = () => ({
-    requestId: request ? request._id : null,
+    responseId: currentResponse ? currentResponse._id : null,
+    requestId: currentRequest ? currentRequest._id : null,
     workspaceId: workspace ? workspace._id : 'n/a',
   });
 
@@ -451,13 +625,49 @@ export async function getRenderedRequestAndContext(
     environmentId,
     extraInfo,
     purpose,
+    dataset,
+    requestSetters,
   }: RenderRequestOptions,
 ) {
   const ancestors = await getRenderContextAncestors(request);
   const workspace = ancestors.find(isWorkspace);
   const parentId = workspace ? workspace._id : 'n/a';
   const cookieJar = await models.cookieJar.getOrCreateForParentId(parentId);
-  const renderContext = await getRenderContext({ request, environmentId, ancestors, purpose, extraInfo });
+  // execute setter
+  let backupDataset: RequestDataSet | null = dataset ? clone(dataset) : null;
+  const beforeSendSetters = requestSetters
+    ?.filter(s => s.event === SetterEventType.BEFORE_SEND_REQUEST)
+    ?.sort(models.requestSetter.sort) || [];
+  const duringSendSetters = requestSetters
+    ?.filter(s => s.event === SetterEventType.DURING_SEND_REQUEST)
+    ?.sort(models.requestSetter.sort) || [];
+
+  let renderContext = await getRenderContext({
+    request,
+    environmentId,
+    ancestors,
+    purpose,
+    extraInfo,
+    dataset: backupDataset,
+  });
+
+  // execute before send setters
+  await executeSetter(
+    beforeSendSetters,
+    renderContext,
+    ancestors,
+    environmentId,
+    dataset,
+  );
+  backupDataset = dataset ? clone(dataset) : null;
+  renderContext = await getRenderContext({
+    request,
+    environmentId,
+    ancestors,
+    purpose,
+    extraInfo,
+    dataset: backupDataset,
+  });
 
   // HACK: Switch '#}' to '# }' to prevent Nunjucks from barfing
   // https://github.com/kong/insomnia/issues/895
@@ -501,6 +711,25 @@ export async function getRenderedRequestAndContext(
 
   // Default the proto if it doesn't exist
   renderedRequest.url = setDefaultProtocol(renderedRequest.url);
+
+  // execute during send setters
+  await executeSetter(
+    duringSendSetters,
+    renderContext,
+    ancestors,
+    environmentId,
+    dataset,
+  );
+  backupDataset = dataset ? clone(dataset) : null;
+  renderContext = await getRenderContext({
+    request,
+    environmentId,
+    ancestors,
+    purpose,
+    extraInfo,
+    dataset:backupDataset,
+  });
+
   return {
     context: renderContext,
     request: {
@@ -528,6 +757,8 @@ export async function getRenderedRequestAndContext(
       settingStoreCookies: renderedRequest.settingStoreCookies,
       settingRebuildPath: renderedRequest.settingRebuildPath,
       settingFollowRedirects: renderedRequest.settingFollowRedirects,
+      settingResponseVisualize: renderedRequest.settingResponseVisualize,
+      settingDatasetFilter: renderedRequest.settingDatasetFilter,
       type: renderedRequest.type,
       url: renderedRequest.url,
     },
@@ -556,7 +787,7 @@ function _getOrderedEnvironmentKeys(finalRenderContext: Record<string, any>): st
   });
 }
 
-type RenderContextAncestor = Request | GrpcRequest | RequestGroup | Workspace | Project;
+type RenderContextAncestor = Request | GrpcRequest | RequestGroup | Workspace | Project | RequestDataSet;
 export async function getRenderContextAncestors(base?: Request | GrpcRequest | Workspace): Promise<RenderContextAncestor[]> {
   return await db.withAncestors<RenderContextAncestor>(base || null, [
     models.request.type,

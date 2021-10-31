@@ -22,6 +22,11 @@ interface BaseRequestMeta {
   pinned: boolean;
   lastActive: number;
   downloadPath: string | null;
+  datasetWidth: number | null;
+  datasetWidthType: string | null;
+  datasetShowAll: boolean | null;
+  visualizeTemplate: string | null;
+  visualizePowerUserMode: boolean | null;
 }
 
 export type RequestMeta = BaseModel & BaseRequestMeta;
@@ -41,6 +46,11 @@ export function init() {
     pinned: false,
     lastActive: 0,
     downloadPath: null,
+    datasetWidth: null,
+    datasetWidthType: null,
+    datasetShowAll: null,
+    visualizeTemplate: null,
+    visualizePowerUserMode: null,
   };
 }
 

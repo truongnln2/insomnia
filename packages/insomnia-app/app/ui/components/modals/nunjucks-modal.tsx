@@ -20,13 +20,20 @@ interface Props {
 
 interface State {
   defaultTemplate: string;
+  handleRender: HandleRender;
+  handleGetRenderContext: HandleGetRenderContext;
 }
 
 @autoBindMethodsForReact(AUTOBIND_CFG)
 export class NunjucksModal extends PureComponent<Props, State> {
-  state: State = {
-    defaultTemplate: '',
-  };
+  constructor(props: Props) {
+    super(props);
+    this.state = {
+      defaultTemplate: '',
+      handleRender: props.handleRender,
+      handleGetRenderContext: props.handleGetRenderContext,
+    };
+  }
 
   _onDone: Function | null = null;
   _currentTemplate: string | null = null;
@@ -55,11 +62,18 @@ export class NunjucksModal extends PureComponent<Props, State> {
     }
   }
 
-  show({ template, onDone }) {
+  show({
+    template,
+    onDone,
+    handleRender,
+    handleGetRenderContext,
+  }) {
     this._onDone = onDone;
     this._currentTemplate = template;
     this.setState({
       defaultTemplate: template,
+      handleRender,
+      handleGetRenderContext,
     });
     this.modal?.show();
   }
@@ -69,7 +83,8 @@ export class NunjucksModal extends PureComponent<Props, State> {
   }
 
   render() {
-    const { handleRender, handleGetRenderContext, uniqueKey, workspace } = this.props;
+    const { uniqueKey, workspace } = this.props;
+    const { handleRender, handleGetRenderContext } = this.state;
     const { defaultTemplate } = this.state;
     let editor: JSX.Element | null = null;
     let title = '';
@@ -78,6 +93,7 @@ export class NunjucksModal extends PureComponent<Props, State> {
       title = 'Variable';
       editor = (
         <VariableEditor
+          workspace={workspace}
           onChange={this._handleTemplateChange}
           defaultValue={defaultTemplate}
           handleRender={handleRender}

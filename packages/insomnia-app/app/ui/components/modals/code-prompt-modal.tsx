@@ -45,25 +45,35 @@ interface State {
   hideMode: boolean;
   enableRender: boolean;
   showCopyButton: boolean;
+  enableEditFontSize: boolean;
+  hideLineNumbers: boolean;
+  editorFontSize: number;
 }
 
 @autoBindMethodsForReact(AUTOBIND_CFG)
 export class CodePromptModal extends PureComponent<Props, State> {
-  state: State = {
-    title: 'Not Set',
-    defaultValue: '',
-    submitName: 'Not Set',
-    placeholder: '',
-    hint: '',
-    mode: 'text/plain',
-    hideMode: false,
-    enableRender: false,
-    showCopyButton: false,
-  };
+  constructor(props: Props) {
+    super(props);
+
+    this.state = {
+      title: 'Not Set',
+      defaultValue: '',
+      submitName: 'Not Set',
+      placeholder: '',
+      hint: '',
+      mode: 'text/plain',
+      hideMode: false,
+      enableRender: false,
+      showCopyButton: false,
+      editorFontSize: props.editorFontSize,
+      enableEditFontSize: false,
+      hideLineNumbers: true,
+    };
+  }
 
   modal: Modal | null = null;
-  _onModeChange: Function = () => {};
-  _onChange: Function = () => {};
+  _onModeChange: Function = () => { };
+  _onChange: Function = () => { };
 
   _setModalRef(n: Modal) {
     this.modal = n;
@@ -95,6 +105,8 @@ export class CodePromptModal extends PureComponent<Props, State> {
       onChange,
       onModeChange,
       showCopyButton,
+      enableEditFontSize,
+      hideLineNumbers,
     } = options;
     this._onChange = onChange;
     this._onModeChange = onModeChange;
@@ -109,9 +121,17 @@ export class CodePromptModal extends PureComponent<Props, State> {
       hideMode,
       showCopyButton,
       mode: realMode || this.state.mode || 'text/plain',
+      enableEditFontSize,
+      hideLineNumbers: hideLineNumbers !== false,
     });
 
     this.modal?.show();
+  }
+
+  _handleChangeFontSize(e: React.SyntheticEvent<HTMLInputElement | HTMLSelectElement>) {
+    this.setState({
+      editorFontSize: parseInt(e.currentTarget.value),
+    });
   }
 
   render() {
@@ -122,7 +142,6 @@ export class CodePromptModal extends PureComponent<Props, State> {
       handleRender,
       editorKeyMap,
       editorIndentSize,
-      editorFontSize,
       editorLineWrapping,
     } = this.props;
     const {
@@ -135,6 +154,9 @@ export class CodePromptModal extends PureComponent<Props, State> {
       hideMode,
       enableRender,
       showCopyButton,
+      editorFontSize,
+      enableEditFontSize,
+      hideLineNumbers,
     } = this.state;
 
     return (
@@ -179,10 +201,27 @@ export class CodePromptModal extends PureComponent<Props, State> {
               />
             </div>
           ) : (
-            <div className="pad-sm pad-bottom tall">
+            <div className="pad-sm pad-bottom tall" style={{ display: 'flex', flexDirection: 'column' }}>
+              {
+                enableEditFontSize ? (
+                  <div className="form-control">
+                    <label className="flex">
+                      <span className="faded space-left space-right no-wrap" style={{ alignSelf: 'center' }}>Font size:</span>
+                      <input
+                        type="number"
+                        min="5"
+                        max="30"
+                        defaultValue={editorFontSize || '0'}
+                        onChange={this._handleChangeFontSize}
+                      />
+                    </label>
+                  </div>
+                ) : null
+              }
               <div className="form-control form-control--outlined form-control--tall tall">
                 <CodeEditor
-                  hideLineNumbers
+                  key={editorFontSize}
+                  hideLineNumbers={hideLineNumbers}
                   manualPrettify
                   className="tall"
                   defaultValue={defaultValue}

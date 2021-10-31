@@ -11,9 +11,11 @@ import { Tab, TabList, TabPanel, Tabs } from 'react-tabs';
 import { AUTOBIND_CFG, PREVIEW_MODE_SOURCE } from '../../../common/constants';
 import { exportHarCurrentRequest } from '../../../common/har';
 import { getSetCookieHeaders } from '../../../common/misc';
+import { HandleRender } from '../../../common/render';
 import * as models from '../../../models';
 import type { Environment } from '../../../models/environment';
 import type { Request } from '../../../models/request';
+import { RequestMeta } from '../../../models/request-meta';
 import type { RequestVersion } from '../../../models/request-version';
 import type { Response } from '../../../models/response';
 import type { UnitTestResult } from '../../../models/unit-test-result';
@@ -30,7 +32,8 @@ import { TimeTag } from '../tags/time-tag';
 import { ResponseCookiesViewer } from '../viewers/response-cookies-viewer';
 import { ResponseHeadersViewer } from '../viewers/response-headers-viewer';
 import { ResponseTimelineViewer } from '../viewers/response-timeline-viewer';
-import { ResponseViewer } from  '../viewers/response-viewer';
+import { ResponseViewer } from '../viewers/response-viewer';
+import { ResponseVisualizeViewer } from '../viewers/response-visualize-viewer';
 import { BlankPane } from './blank-pane';
 import { Pane, paneBodyClasses, PaneHeader } from './pane';
 import { PlaceholderResponsePane } from './placeholder-response-pane';
@@ -60,6 +63,8 @@ interface Props {
   response?: Response | null;
   environment?: Environment | null;
   unitTestResult?: UnitTestResult | null;
+  requestMeta: RequestMeta | undefined;
+  handleRender: HandleRender;
 }
 
 @autoBindMethodsForReact(AUTOBIND_CFG)
@@ -225,6 +230,14 @@ export class ResponsePane extends PureComponent<Props> {
     }
   }
 
+  _handleRender(object: any, contextCacheKey?: string | null, fieldSource?: string | null, source?: any | null) {
+    const { handleRender, response } = this.props;
+    if (!fieldSource) {
+      source = response;
+    }
+    return handleRender(object, contextCacheKey, fieldSource || 'response', source);
+  }
+
   render() {
     const {
       disableHtmlPreviewJs,
@@ -250,6 +263,7 @@ export class ResponsePane extends PureComponent<Props> {
       response,
       responses,
       showCookiesModal,
+      requestMeta,
     } = this.props;
 
     if (!request) {
@@ -326,6 +340,11 @@ export class ResponsePane extends PureComponent<Props> {
             <Tab tabIndex="-1">
               <Button>Timeline</Button>
             </Tab>
+            {request?.settingResponseVisualize ? (
+              <Tab tabIndex="-1">
+                <Button>Visualizer</Button>
+              </Tab>
+            ) : null}
           </TabList>
           <TabPanel className="react-tabs__tab-panel">
             <ResponseViewer
@@ -379,6 +398,16 @@ export class ResponsePane extends PureComponent<Props> {
               />
             </ErrorBoundary>
           </TabPanel>
+          {request?.settingResponseVisualize ? (
+            <TabPanel className="react-tabs__tab-panel">
+              <ErrorBoundary key={response._id} errorClassName="font-error pad text-center">
+                <ResponseVisualizeViewer
+                  handleRender={this._handleRender}
+                  requestMeta={requestMeta}
+                />
+              </ErrorBoundary>
+            </TabPanel>
+          ) : null}
         </Tabs>
         <ErrorBoundary errorClassName="font-error pad text-center">
           <ResponseTimer

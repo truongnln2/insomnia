@@ -76,6 +76,26 @@ export interface PluginTemplateTagContext {
   };
 }
 
+export interface PluginTemplateFilterContext {
+  meta: {
+    requestId: string;
+    environmentId: string;
+    workspaceId: string;
+  };
+  util: {
+    models: {
+      request: {
+        getById: (id: string) => Promise<Request | null>;
+      };
+      response: {
+        getLatestForRequestId: (id: string) => Promise<Response | null>;
+        getAvailablesRequestId: (id: string, top?: number) => Promise<Response[]>;
+        getBodyBuffer: (response: Response, fallback?: any) => Promise<Buffer | null>;
+      };
+    };
+  };
+}
+
 export interface PluginTemplateTagActionContext {
   store: PluginStore;
 }
@@ -97,4 +117,12 @@ export interface PluginTemplateTag {
   deprecated?: boolean;
   validate?: (value: any) => string | null;
   priority?: number;
+}
+
+export interface PluginTemplateFilter {
+  name: string;
+  displayName: string;
+  args: PluginArgument[];
+  description: string;
+  run: (context: PluginTemplateFilterContext, input: any, ...arg: any[]) => Promise<any> | any;
 }

@@ -3,6 +3,7 @@ import objectPath from 'objectpath';
 import type { PluginStore } from '../plugins/context';
 import type { PluginArgumentEnumOption } from './extensions';
 
+export const META_KEY = '____meta';
 export interface NunjucksParsedTagArg {
   type: 'string' | 'number' | 'boolean' | 'variable' | 'expression' | 'enum' | 'file' | 'model';
   encoding?: 'base64';
@@ -37,9 +38,14 @@ export interface NunjucksParsedTag {
   disablePreview?: (arg0: NunjucksParsedTagArg[]) => boolean;
 }
 
-interface Key {
+export interface Key {
   name: string;
   value: any;
+  meta?: {
+    name: string;
+    type: string;
+    id: string;
+  };
 }
 
 /**
@@ -51,19 +57,31 @@ interface Key {
 export function getKeys(
   obj: any,
   prefix = '',
+  meta: any = null,
 ): Key[] {
   let allKeys: Key[] = [];
+  if (!meta) {
+    meta = obj[META_KEY];
+  }
+  if (!meta) {
+    meta = '';
+  }
   const typeOfObj = Object.prototype.toString.call(obj);
 
   if (typeOfObj === '[object Array]') {
     for (let i = 0; i < obj.length; i++) {
-      allKeys = [...allKeys, ...getKeys(obj[i], forceBracketNotation(prefix, i))];
+      allKeys = [...allKeys, ...getKeys(obj[i], forceBracketNotation(prefix, i), meta)];
     }
   } else if (typeOfObj === '[object Object]') {
     const keys = Object.keys(obj);
 
     for (const key of keys) {
-      allKeys = [...allKeys, ...getKeys(obj[key], forceBracketNotation(prefix, key))];
+      if (key !== META_KEY) {
+        allKeys = [
+          ...allKeys,
+          ...getKeys(obj[key], forceBracketNotation(prefix, key), meta[key] || meta),
+        ];
+      }
     }
   } else if (typeOfObj === '[object Function]') {
     // Ignore functions
@@ -71,6 +89,7 @@ export function getKeys(
     allKeys.push({
       name: normalizeToDotAndBracketNotation(prefix),
       value: obj,
+      meta,
     });
   }
 
@@ -275,4 +294,29 @@ export function decodeEncoding<T>(value: T) {
   }
 
   return value;
+}
+
+export interface NunjucksParsedFilterArg {
+  type: 'string' | 'number' | 'boolean' | 'enum' | 'model';
+  value: string | number | boolean;
+  defaultValue?: string | number | boolean;
+  forceVariable?: boolean;
+  placeholder?: string;
+  help?: string;
+  displayName?: string;
+  quotedBy?: '"' | "'";
+  validate?: (value: any) => string;
+  hide?: (arg0: NunjucksParsedFilterArg[]) => boolean;
+  model?: string;
+  options?: PluginArgumentEnumOption[];
+  itemTypes?: ('file' | 'directory')[];
+  extensions?: string[];
+}
+
+export interface NunjucksParsedFilter {
+  name: string;
+  description?: string;
+  displayName?: string;
+  args?: NunjucksParsedFilterArg[];
+  isPlugin: boolean;
 }

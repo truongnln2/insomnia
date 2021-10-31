@@ -66,6 +66,11 @@ interface Props {
   connectDropTarget?: ConnectDropTarget;
   isDragging?: boolean;
   isDraggingOver?: boolean;
+  // dazzle update
+  noToggle?: boolean;
+  keyWidth?: React.CSSProperties;
+  readOnlyKey?: boolean;
+  ignoreSuggestKey?: boolean;
 }
 
 interface State {
@@ -255,6 +260,8 @@ class KeyValueEditorRow extends PureComponent<Props, State> {
       submitName: 'Done',
       title: `Edit ${pair.name}`,
       defaultValue: pair.value,
+      enableEditFontSize: true,
+      hideLineNumbers: false,
       onChange: this._handleValueChange,
       enableRender: handleRender || handleGetRenderContext,
       // @ts-expect-error -- TSCONVERSION
@@ -450,6 +457,10 @@ class KeyValueEditorRow extends PureComponent<Props, State> {
       connectDragSource,
       connectDragPreview,
       connectDropTarget,
+      noToggle,
+      keyWidth,
+      readOnlyKey,
+      ignoreSuggestKey,
     } = this.props;
     const { dragDirection } = this.state;
     const classes = classnames(className, {
@@ -474,6 +485,11 @@ class KeyValueEditorRow extends PureComponent<Props, State> {
       );
     }
 
+    const keyContainerStyle: React.CSSProperties = {};
+    if (keyWidth) {
+      Object.assign(keyContainerStyle, keyWidth);
+    }
+
     const row = (
       <li className={classes}>
         {handle}
@@ -482,18 +498,19 @@ class KeyValueEditorRow extends PureComponent<Props, State> {
             className={classnames('form-control form-control--underlined form-control--wide', {
               'form-control--inactive': pair.disabled,
             })}
+            style={keyContainerStyle}
           >
             <OneLineEditor
               ref={ref => { this._nameInput = ref; }}
               placeholder={namePlaceholder || 'Name'}
               defaultValue={pair.name}
-              render={handleRender}
-              getRenderContext={handleGetRenderContext}
+              render={ignoreSuggestKey ? undefined : handleRender}
+              getRenderContext={ignoreSuggestKey ? undefined : handleGetRenderContext}
               nunjucksPowerUserMode={nunjucksPowerUserMode}
               isVariableUncovered={isVariableUncovered}
-              getAutocompleteConstants={this._handleAutocompleteNames}
+              getAutocompleteConstants={ignoreSuggestKey ? undefined : this._handleAutocompleteNames}
               forceInput={forceInput}
-              readOnly={readOnly}
+              readOnly={readOnly || readOnlyKey}
               onBlur={this._handleBlurName}
               onChange={this._handleNameChange}
               onFocus={this._handleFocusName}
@@ -511,7 +528,7 @@ class KeyValueEditorRow extends PureComponent<Props, State> {
 
           {this.renderPairSelector()}
 
-          {!hideButtons ? (
+          {!noToggle && !hideButtons ? (
             <Button
               onClick={this._handleDisableChange}
               value={!pair.disabled}

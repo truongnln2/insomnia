@@ -17,9 +17,11 @@ import { Project } from '../../../models/project';
 import { ProtoDirectory } from '../../../models/proto-directory';
 import { ProtoFile } from '../../../models/proto-file';
 import { Request } from '../../../models/request';
+import { RequestDataSet } from '../../../models/request-dataset';
 import { RequestGroup } from '../../../models/request-group';
 import { RequestGroupMeta } from '../../../models/request-group-meta';
 import { RequestMeta } from '../../../models/request-meta';
+import { RequestSetter } from '../../../models/request-setter';
 import { RequestVersion } from '../../../models/request-version';
 import { Response } from '../../../models/response';
 import { Settings } from '../../../models/settings';
@@ -70,6 +72,8 @@ export interface EntitiesState {
   protoDirectories: EntityRecord<ProtoDirectory>;
   grpcRequests: EntityRecord<GrpcRequest>;
   grpcRequestMetas: EntityRecord<GrpcRequestMeta>;
+  requestDatasets: EntityRecord<RequestDataSet>;
+  requestSetters: EntityRecord<RequestSetter>;
 }
 
 export const initialEntitiesState: EntitiesState = {
@@ -98,6 +102,8 @@ export const initialEntitiesState: EntitiesState = {
   protoDirectories: {},
   grpcRequests: {},
   grpcRequestMetas: {},
+  requestDatasets: {},
+  requestSetters: {},
 };
 
 export function reducer(state = initialEntitiesState, action) {
@@ -190,5 +196,7 @@ export async function allDocs() {
     ...(await models.protoDirectory.all()),
     ...(await models.grpcRequest.all()),
     ...(await models.grpcRequestMeta.all()),
+    ...(await models.requestDataset.all()),
+    ...(await models.requestSetter.all()),
   ];
 }

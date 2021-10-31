@@ -1,6 +1,6 @@
 import { autoBindMethodsForReact } from 'class-autobind-decorator';
 import * as importers from 'insomnia-importers';
-import React, { Fragment, PureComponent, Ref } from 'react';
+import React, { Fragment, LegacyRef, PureComponent, Ref } from 'react';
 
 import { trackPageView } from '../../common/analytics';
 import type { GlobalActivity } from '../../common/constants';
@@ -30,7 +30,9 @@ import {
   RequestHeader,
   RequestParameter,
 } from '../../models/request';
+import { RequestDataSet } from '../../models/request-dataset';
 import { RequestGroup } from '../../models/request-group';
+import { RequestMeta } from '../../models/request-meta';
 import type { Response } from '../../models/response';
 import { GitVCS } from '../../sync/git/git-vcs';
 import { VCS } from '../../sync/vcs/vcs';
@@ -123,6 +125,13 @@ export type WrapperProps = AppProps & {
   handleSendAndDownloadRequestWithEnvironment: Function;
   handleUpdateRequestMimeType: (mimeType: string) => Promise<Request | null>;
   handleUpdateDownloadPath: Function;
+  // dazzle update
+  handleUpdateActiveRequestMeta: (patch: Partial<RequestMeta>, requestId?: string) => any;
+  handleToggleDatasetResizeType: Function;
+  handleSetRequestDatasetPaneRef: LegacyRef<any>;
+  handleStartDragDatasetPaneHorizontal: React.MouseEventHandler;
+  handleResetDragDatasetPaneHorizontal: React.MouseEventHandler;
+  handleSendWithDataset: (r: Request, headers: RequestDataSet) => void;
 
   paneWidth: number;
   paneHeight: number;

@@ -193,8 +193,6 @@ export class WrapperDebug extends PureComponent<Props> {
       activeWorkspace,
       handleCreateRequestForWorkspace,
       handleGenerateCodeForActiveRequest,
-      handleGetRenderContext,
-      handleRender,
       handleUpdateDownloadPath,
       handleUpdateRequestMimeType,
       headerEditorKey,
@@ -219,9 +217,9 @@ export class WrapperDebug extends PureComponent<Props> {
             workspaceId={activeWorkspace._id}
             forceRefreshKey={forceRefreshKey}
             settings={settings}
-            handleRender={handleRender}
+            handleRender={this._handleRender}
             isVariableUncovered={isVariableUncovered}
-            handleGetRenderContext={handleGetRenderContext}
+            handleGetRenderContext={this._handleGetRenderContext}
           />
         </ErrorBoundary>
       );
@@ -237,9 +235,9 @@ export class WrapperDebug extends PureComponent<Props> {
           forceUpdateRequestHeaders={handleForceUpdateRequestHeaders}
           handleCreateRequest={handleCreateRequestForWorkspace}
           handleGenerateCode={handleGenerateCodeForActiveRequest}
-          handleGetRenderContext={handleGetRenderContext}
+          handleGetRenderContext={this._handleGetRenderContext}
           handleImport={handleImport}
-          handleRender={handleRender}
+          handleRender={this._handleRender}
           handleSend={handleSendRequestWithActiveEnvironment}
           handleSendAndDownload={handleSendAndDownloadRequestWithActiveEnvironment}
           handleUpdateDownloadPath={handleUpdateDownloadPath}
@@ -259,6 +257,7 @@ export class WrapperDebug extends PureComponent<Props> {
           updateSettingsUseBulkHeaderEditor={handleUpdateSettingsUseBulkHeaderEditor}
           updateSettingsUseBulkParametersEditor={handleUpdateSettingsUseBulkParametersEditor}
           workspace={activeWorkspace}
+          wrapperProps={this.props.wrapperProps}
         />
       </ErrorBoundary>
     );
@@ -287,6 +286,8 @@ export class WrapperDebug extends PureComponent<Props> {
       responseFilterHistory,
       responsePreviewMode,
       settings,
+      activeRequestMeta,
+      handleRender,
     } = this.props.wrapperProps;
 
     // activeRequest being truthy only needs to be checked for isGrpcRequest (for now)
@@ -330,9 +331,21 @@ export class WrapperDebug extends PureComponent<Props> {
           response={activeResponse}
           responses={activeRequestResponses}
           unitTestResult={activeUnitTestResult}
+          requestMeta={activeRequestMeta}
+          handleRender={handleRender}
         />
       </ErrorBoundary>
     );
+  }
+
+  _handleRender(object: any, contextCacheKey?: string | null, fieldSource?: string | null, request?: Request | null) {
+    const { handleRender } = this.props.wrapperProps;
+    return handleRender(object, contextCacheKey, fieldSource || 'request', request);
+  }
+
+  _handleGetRenderContext(fieldSource?: string, request?: Request | null) {
+    const { handleGetRenderContext } = this.props.wrapperProps;
+    return handleGetRenderContext(fieldSource || 'request', request);
   }
 
   render() {

@@ -6,7 +6,9 @@ import {
   EXPORT_TYPE_PROTO_DIRECTORY,
   EXPORT_TYPE_PROTO_FILE,
   EXPORT_TYPE_REQUEST,
+  EXPORT_TYPE_REQUEST_DATASET,
   EXPORT_TYPE_REQUEST_GROUP,
+  EXPORT_TYPE_REQUEST_SETTER,
   EXPORT_TYPE_UNIT_TEST,
   EXPORT_TYPE_UNIT_TEST_SUITE,
   EXPORT_TYPE_WORKSPACE,
@@ -25,9 +27,11 @@ import * as _project from './project';
 import * as _protoDirectory from './proto-directory';
 import * as _protoFile from './proto-file';
 import * as _request from './request';
+import * as _requestDataset from './request-dataset';
 import * as _requestGroup from './request-group';
 import * as _requestGroupMeta from './request-group-meta';
 import * as _requestMeta from './request-meta';
+import * as _requestSetter from './request-setter';
 import * as _requestVersion from './request-version';
 import * as _response from './response';
 import * as _settings from './settings';
@@ -77,6 +81,8 @@ export const grpcRequest = _grpcRequest;
 export const grpcRequestMeta = _grpcRequestMeta;
 export const workspace = _workspace;
 export const workspaceMeta = _workspaceMeta;
+export const requestDataset = _requestDataset;
+export const requestSetter = _requestSetter;
 
 export function all() {
   // NOTE: This list should be from most to least specific (ie. parents above children)
@@ -108,6 +114,8 @@ export function all() {
     protoDirectory,
     grpcRequest,
     grpcRequestMeta,
+    requestDataset,
+    requestSetter,
   ] as const;
 }
 
@@ -216,4 +224,6 @@ export const MODELS_BY_EXPORT_TYPE = {
   [EXPORT_TYPE_API_SPEC]: apiSpec,
   [EXPORT_TYPE_PROTO_FILE]: protoFile,
   [EXPORT_TYPE_PROTO_DIRECTORY]: protoDirectory,
+  [EXPORT_TYPE_REQUEST_DATASET]: requestDataset,
+  [EXPORT_TYPE_REQUEST_SETTER]: requestSetter,
 };

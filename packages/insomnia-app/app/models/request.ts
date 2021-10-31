@@ -91,6 +91,8 @@ export interface BaseRequest {
   settingEncodeUrl: boolean;
   settingRebuildPath: boolean;
   settingFollowRedirects: string;
+  settingResponseVisualize: boolean | null;
+  settingDatasetFilter: boolean | null;
 }
 
 export type Request = BaseModel & BaseRequest;
@@ -118,6 +120,8 @@ export function init(): BaseRequest {
     settingEncodeUrl: true,
     settingRebuildPath: true,
     settingFollowRedirects: 'global',
+    settingResponseVisualize: false,
+    settingDatasetFilter: false,
   };
 }
 
