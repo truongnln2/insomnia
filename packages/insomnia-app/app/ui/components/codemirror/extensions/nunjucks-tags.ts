@@ -3,6 +3,7 @@ import CodeMirror, { Token } from 'codemirror';
 import * as misc from '../../../../common/misc';
 import { HandleGetRenderContext, HandleRender } from '../../../../common/render';
 import { getTagDefinitions } from '../../../../templating/index';
+import { parseVariableAndFilter } from '../../../../templating/parser';
 import { tokenizeTag } from '../../../../templating/utils';
 import { showModal } from '../../modals/index';
 import { NunjucksModal } from '../../modals/nunjucks-modal';
@@ -305,12 +306,16 @@ async function _updateElementText(render, mark, text, renderContext, isVariableU
     } else {
       // Render if it's a variable
       title = await render(str);
+      const parsedValues = parseVariableAndFilter(str) || [];
       const context = await renderContext();
       const con = context.context.getKeysContext();
       const contextForKey = con.keyContext[cleanedStr];
+      const variable = parsedValues[0] || { value: '' };
+      const filters = parsedValues.slice(1);
+      const filtersInnerHTML = filters.length ? ` <label><i class="fa fa-filter"></i> ${filters.length}</label>` : '';
       // Only prefix the title with context, if context is found
       title = contextForKey ? `{${contextForKey}}: ${title}` : title;
-      innerHTML = isVariableUncovered ? title : cleanedStr;
+      innerHTML = isVariableUncovered ? title : variable.value + filtersInnerHTML;
     }
 
     dataError = 'off';
