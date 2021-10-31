@@ -10,7 +10,7 @@ import { HandleGetRenderContext, HandleRender } from '../../../common/render';
 import * as models from '../../../models';
 import { Environment } from '../../../models/environment';
 import { Request } from '../../../models/request';
-import { RequestDataSet } from '../../../models/request-dataset';
+import { REQUEST_DATASET_SETTING_COLLAPSE, RequestDataSet } from '../../../models/request-dataset';
 import { Workspace } from '../../../models/workspace';
 import { WrapperProps } from '../wrapper';
 import DatasetRowEditor from './dataset-row-editor';
@@ -43,6 +43,7 @@ interface State {
   otherDatasets: RequestDataSet[];
   subEnvironments: Environment[];
   toggleEnvironmentFilter: boolean;
+  renderCount: number;
 }
 
 @autoBindMethodsForReact(AUTOBIND_CFG)
@@ -53,6 +54,7 @@ class RequestDatasetEditor extends PureComponent<Props, State> {
     otherDatasets: [],
     subEnvironments: [],
     toggleEnvironmentFilter: false,
+    renderCount: 0,
   };
 
   constructor(props: Props) {
@@ -121,9 +123,13 @@ class RequestDatasetEditor extends PureComponent<Props, State> {
     }
   }
 
-  _onChange(baseDataset: RequestDataSet, otherDatasets: RequestDataSet[]) {
+  _onChange(baseDataset: RequestDataSet, otherDatasets: RequestDataSet[], nextRenderCount?: number) {
+    let { renderCount } = this.state;
+    if (nextRenderCount !== undefined) {
+      renderCount = nextRenderCount;
+    }
     this.setState(
-      { baseDataset, otherDatasets },
+      { baseDataset, otherDatasets, renderCount },
     );
   }
 
@@ -131,7 +137,6 @@ class RequestDatasetEditor extends PureComponent<Props, State> {
     const { otherDatasets, baseDataset } = this.state;
     let updatingDataset = otherDatasets.filter(ds => ds._id === dataset._id)[0];
     if (updatingDataset && baseDataset) {
-      const index = otherDatasets.indexOf(updatingDataset);
       updatingDataset = await models.requestDataset.update(updatingDataset, {
         environment: dataset.environment,
         name: dataset.name,
@@ -139,7 +144,6 @@ class RequestDatasetEditor extends PureComponent<Props, State> {
         applyEnv: dataset.applyEnv,
       });
       const newDatasets = otherDatasets.map(ds => ds._id === updatingDataset._id ? updatingDataset : ds);
-      otherDatasets[index] = updatingDataset;
       this._onChange(baseDataset, newDatasets);
     }
   }
@@ -186,10 +190,11 @@ class RequestDatasetEditor extends PureComponent<Props, State> {
 
   async _handlePromoteToDefault(dataset: RequestDataSet) {
     let { otherDatasets, baseDataset } = this.state;
+    const { renderCount } = this.state;
     let promotingDataset = otherDatasets.filter(ds => ds._id === dataset._id)[0];
     if (promotingDataset && baseDataset) {
-      const promotingEnvironment = promotingDataset.environment;
-      const baseEnvironment = baseDataset.environment;
+      const promotingEnvironment = { ...promotingDataset.environment };
+      const baseEnvironment = { ...baseDataset.environment };
       baseDataset = await models.requestDataset.update(baseDataset, {
         environment: promotingEnvironment,
       });
@@ -197,9 +202,11 @@ class RequestDatasetEditor extends PureComponent<Props, State> {
         environment: baseEnvironment,
       });
       otherDatasets = otherDatasets.map(
-        ds => ds._id === promotingDataset._id ? promotingDataset : ds
+        ds => ds._id === promotingDataset._id ? { ...promotingDataset } : ds
       );
-      this._onChange(baseDataset, otherDatasets);
+      if (baseDataset) {
+        this._onChange(baseDataset, otherDatasets, renderCount + 1);
+      }
     }
   }
 
@@ -213,8 +220,28 @@ class RequestDatasetEditor extends PureComponent<Props, State> {
     });
   }
 
+  async _handleToggleChanged(dataset: RequestDataSet, toggle: boolean) {
+    const { otherDatasets, baseDataset } = this.state;
+    let updatingDataset = otherDatasets.filter(ds => ds._id === dataset._id)[0];
+    if (baseDataset && updatingDataset) {
+      updatingDataset = await models.requestDataset.update(updatingDataset, {
+        settings: {
+          ...(updatingDataset.settings || {}),
+          [REQUEST_DATASET_SETTING_COLLAPSE]: toggle,
+        },
+      });
+      const newDatasets = otherDatasets.map(ds => ds._id === updatingDataset._id ? updatingDataset : ds);
+      this._onChange(baseDataset, newDatasets);
+    }
+  }
+
   render() {
-    const { baseDataset, otherDatasets, toggleEnvironmentFilter } = this.state;
+    const {
+      baseDataset,
+      otherDatasets,
+      toggleEnvironmentFilter,
+      renderCount,
+    } = this.state;
     const {
       handleGetRenderContext,
       handleRender,
@@ -227,6 +254,7 @@ class RequestDatasetEditor extends PureComponent<Props, State> {
         <div className="scrollable">
           <h4>Base dataset</h4>
           {baseDataset && <DatasetRowEditor
+            key={baseDataset._id + renderCount}
             wrapperProps={this.props.wrapperProps}
             nunjucksPowerUserMode={nunjucksPowerUserMode}
             isVariableUncovered={isVariableUncovered}
@@ -252,7 +280,7 @@ class RequestDatasetEditor extends PureComponent<Props, State> {
             {otherDatasets.filter(ds => !toggleEnvironmentFilter || !ds.applyEnv || ds.applyEnv === activeEnvironment?._id)
               .map(dataset => (
                 <DatasetRowEditor
-                  key={dataset._id}
+                  key={dataset._id + renderCount}
                   wrapperProps={this.props.wrapperProps}
                   nunjucksPowerUserMode={nunjucksPowerUserMode}
                   isVariableUncovered={isVariableUncovered}
@@ -266,6 +294,7 @@ class RequestDatasetEditor extends PureComponent<Props, State> {
                   onChanged={this.onDatasetChanged}
                   onDeleteDataset={this.onDeleteDataset}
                   onSendWithDataset={this.onSendWithDataset}
+                  onToggleChanged={this._handleToggleChanged}
                 />
               ))}
           </ListGroup>

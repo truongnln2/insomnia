@@ -12,7 +12,7 @@ import { AUTOBIND_CFG, DATASET_WIDTH_TYPE_FIX_LEFT, DATASET_WIDTH_TYPE_PERCENTAG
 import { HandleGetRenderContext, HandleRender } from '../../../common/render';
 import { metaSortKeySort } from '../../../common/sorting';
 import { Environment } from '../../../models/environment';
-import { RequestDataSet } from '../../../models/request-dataset';
+import { REQUEST_DATASET_SETTING_COLLAPSE, RequestDataSet } from '../../../models/request-dataset';
 import { Editable } from '../base/editable';
 import { PromptButton } from '../base/prompt-button';
 import { ChooseEnvironmentsDropdown } from '../dropdowns/choose-environments-dropdown';
@@ -33,6 +33,7 @@ interface Props {
   onDuplicate?: (dataset: RequestDataSet) => void;
   onSendWithDataset?: (dataset: RequestDataSet) => void;
   onGenerateCodeWithDataset?: (dataset: RequestDataSet) => void;
+  onToggleChanged?: (dataset: RequestDataSet, toggle: boolean) => void;
 }
 
 interface State {
@@ -127,8 +128,12 @@ class DatasetRowEditor extends PureComponent<Props, State> {
     })).sort(metaSortKeySort);
 
     const activeEnvironment = environments.find(e => e._id === dataset.applyEnv);
+    let isToggled = false;
+    if (dataset.settings) {
+      isToggled = dataset.settings[REQUEST_DATASET_SETTING_COLLAPSE] || false;
+    }
     this.state = {
-      isToggled: false,
+      isToggled: isToggled,
       toggleIconRotation: -90,
       baseDataset: datasetList,
       datasetName: dataset.name,
@@ -188,8 +193,13 @@ class DatasetRowEditor extends PureComponent<Props, State> {
   }
 
   toggle() {
+    const { isToggled } = this.state;
+    const { dataset, onToggleChanged } = this.props;
+    onToggleChanged && onToggleChanged(
+      dataset, !isToggled
+    );
     this.setState({
-      isToggled: !this.state.isToggled,
+      isToggled: !isToggled,
     });
   }
 

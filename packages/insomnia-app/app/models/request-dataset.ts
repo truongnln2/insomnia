@@ -14,6 +14,8 @@ export const canDuplicate = true;
 
 export const canSync = true;
 
+export const REQUEST_DATASET_SETTING_COLLAPSE = 'collapse';
+
 interface BaseRequestDataset {
   name: string;
   applyEnv: string | null;
@@ -22,6 +24,7 @@ interface BaseRequestDataset {
   description?: string;
   default: boolean;
   selected?: boolean;
+  settings?: Record<string, any>;
 }
 
 export type RequestDataSet = BaseModel & BaseRequestDataset;
@@ -38,6 +41,7 @@ export function init(): BaseRequestDataset {
     environmentPropertyOrder: null,
     default: false,
     selected: false,
+    settings: {},
   };
 }
 
