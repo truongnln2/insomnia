@@ -416,7 +416,9 @@ export class PluginFilterArgumentsEditor extends PureComponent<Props, State> {
     } else if (argDefinition.type === 'string') {
       argInput = this.renderArgString(argDefinition);
     } else if (argDefinition.type === 'boolean') {
-      argInput = this.renderArgBoolean(argDefinition.value === 'true');
+      argInput = this.renderArgBoolean(
+        argDefinition.value === true || argDefinition.value === 'true'
+      );
     } else if (argDefinition.type === 'number') {
       argInput = this.renderArgNumber(argDefinition);
     } else if (argDefinition.type === 'enum') {

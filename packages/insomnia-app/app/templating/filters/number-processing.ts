@@ -36,6 +36,7 @@ const processNumberFilter: PluginTemplateFilter = {
         { displayName: 'Hexadecimal', value: DigitType[DigitType.hex] },
         { displayName: 'Octal', value: DigitType[DigitType.oct] },
       ],
+      defaultValue: DigitType[DigitType.dec],
     },
     {
       displayName: 'Processing type',
@@ -48,6 +49,7 @@ const processNumberFilter: PluginTemplateFilter = {
         { displayName: 'Floor', value: Process[Process.floor] },
         { displayName: 'Abs', value: Process[Process.abs] },
       ],
+      defaultValue: Process[Process.none],
     },
     {
       displayName: 'Transform output',
@@ -63,13 +65,14 @@ const processNumberFilter: PluginTemplateFilter = {
         { displayName: 'Multiply', value: UpdownMethod.Multiply },
         { displayName: 'Divide', value: UpdownMethod.Divide },
       ],
-      hide: (args: any[]) => args[2].value !== 'updown',
+      hide: (args: any[]) => args[1].value !== 'updown',
+      defaultValue: UpdownMethod.Plus,
     },
     {
       displayName: 'Increase/Descrease by',
       type: 'number',
       defaultValue: 1,
-      hide: (args: any[]) => args[2].value !== 'updown',
+      hide: (args: any[]) => args[1].value !== 'updown',
     },
     {
       displayName: 'Transform to type',
@@ -80,12 +83,14 @@ const processNumberFilter: PluginTemplateFilter = {
         { displayName: 'Hexadecimal', value: DigitType[DigitType.hex] },
         { displayName: 'Octal', value: DigitType[DigitType.oct] },
       ],
-      hide: (args: any[]) => args[3].value === false,
+      hide: (args: any[]) => args[2].value === 'false' || !args[2].value,
+      defaultValue: DigitType[DigitType.dec],
     },
     {
       displayName: 'Default value',
       type: 'string',
       placeholder: 'Default number value',
+      defaultValue: '',
     },
   ],
   async run(
