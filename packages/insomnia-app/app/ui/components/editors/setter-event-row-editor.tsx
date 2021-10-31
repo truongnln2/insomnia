@@ -102,13 +102,14 @@ export class SetterEventRowEditor extends PureComponent<Props, State> {
     };
   }
 
-  static _convertPropsPair(pairs: RequestSetter[]) {
+  static _convertPropsPair(pairs: RequestSetter[]): VariableSetterPair[] {
     return pairs.sort(setterSort).map(p => ({
       description: p.description,
       disabled: !p.enabled,
       id: p._id,
       propertyName: p.objectKey,
       value: p.setterValue,
+      multiline: p.multiline || false,
     }));
   }
 
@@ -335,6 +336,7 @@ export class SetterEventRowEditor extends PureComponent<Props, State> {
       pair.propertyName && (patch.objectKey = pair.propertyName);
       pair.disabled !== undefined && (patch.enabled = !pair.disabled);
       pair.value && (patch.setterValue = pair.value);
+      pair.multiline !== undefined && (patch.multiline = pair.multiline);
       this.props.onChange(setter, patch);
     }
   }

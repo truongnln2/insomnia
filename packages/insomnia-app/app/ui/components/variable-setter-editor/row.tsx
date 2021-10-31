@@ -11,11 +11,17 @@ import {
 import ReactDOM from 'react-dom';
 
 import { AUTOBIND_CFG } from '../../../common/constants';
+import { describeByteSize } from '../../../common/misc';
 import { HandleGetRenderContext, HandleRender } from '../../../common/render';
 import { Key } from '../../../templating/utils';
 import { Button } from '../base/button';
+import { Dropdown } from '../base/dropdown/dropdown';
+import { DropdownButton } from '../base/dropdown/dropdown-button';
+import { DropdownItem } from '../base/dropdown/dropdown-item';
 import { PromptButton } from '../base/prompt-button';
 import { OneLineEditor } from '../codemirror/one-line-editor';
+import { showModal } from '../modals';
+import { CodePromptModal } from '../modals/code-prompt-modal';
 
 export interface VariableSetterPair {
   id: string;
@@ -23,6 +29,7 @@ export interface VariableSetterPair {
   value: string;
   description: string;
   disabled: boolean;
+  multiline: boolean;
 }
 
 interface Props {
@@ -213,6 +220,34 @@ class KeyValueEditorBaseRow extends PureComponent<Props, State> {
     if (handleGetAutocompleteValueConstants) {
       return handleGetAutocompleteValueConstants(this.props.pair);
     }
+    return [];
+  }
+
+  _handleTypeChange(def) {
+    this._sendChange({
+      multiline: def.multiline,
+    });
+  }
+
+  _handleEditMultiline() {
+    const { pair, handleRender, handleGetRenderContext } = this.props;
+    showModal(CodePromptModal, {
+      submitName: 'Done',
+      title: `Edit setter value for "${pair.propertyName}"`,
+      defaultValue: pair.value,
+      enableEditFontSize: true,
+      hideLineNumbers: false,
+      onChange: this._handleValueChange,
+      enableRender: handleRender || handleGetRenderContext,
+      mode: pair.multiline || 'text/plain',
+      onModeChange: mode => {
+        this._handleTypeChange(
+          Object.assign({}, pair, {
+            multiline: mode,
+          }),
+        );
+      },
+    });
   }
 
   renderPairValue() {
@@ -225,24 +260,37 @@ class KeyValueEditorBaseRow extends PureComponent<Props, State> {
       nunjucksPowerUserMode,
       isVariableUncovered,
     } = this.props;
-    return (
-      <OneLineEditor
-        ref={ref => { this._valueInput = ref; }}
-        readOnly={readOnly}
-        type={'text'}
-        placeholder={valuePlaceholder || 'Value'}
-        defaultValue={pair.value}
-        onChange={this._handleValueChange}
-        onBlur={this._handleBlurValue}
-        onKeyDown={this._handleKeyDown}
-        onFocus={this._handleFocusValue}
-        render={handleRender}
-        getRenderContext={handleGetRenderContext}
-        nunjucksPowerUserMode={nunjucksPowerUserMode}
-        isVariableUncovered={isVariableUncovered}
-        getAutocompleteConstants={this._handleAutocompleteValues}
-      />
-    );
+    if (pair.multiline) {
+      const bytes = Buffer.from(pair.value, 'utf8').length;
+      return (
+        <button
+          className="btn btn--outlined btn--super-duper-compact wide ellipsis"
+          onClick={this._handleEditMultiline}
+        >
+          <i className="fa fa-pencil-square-o space-right" />
+          {bytes > 0 ? describeByteSize(bytes, true) : 'Click to Edit'}
+        </button>
+      );
+    } else {
+      return (
+        <OneLineEditor
+          ref={ref => { this._valueInput = ref; }}
+          readOnly={readOnly}
+          type={'text'}
+          placeholder={valuePlaceholder || 'Value'}
+          defaultValue={pair.value}
+          onChange={this._handleValueChange}
+          onBlur={this._handleBlurValue}
+          onKeyDown={this._handleKeyDown}
+          onFocus={this._handleFocusValue}
+          render={handleRender}
+          getRenderContext={handleGetRenderContext}
+          nunjucksPowerUserMode={nunjucksPowerUserMode}
+          isVariableUncovered={isVariableUncovered}
+          getAutocompleteConstants={this._handleAutocompleteValues}
+        />
+      );
+    }
   }
 
   render() {
@@ -326,6 +374,31 @@ class KeyValueEditorBaseRow extends PureComponent<Props, State> {
           >
             {this.renderPairValue()}
           </div>
+
+          <Dropdown right>
+            <DropdownButton className="tall">
+              <i className="fa fa-caret-down" />
+            </DropdownButton>
+            <DropdownItem
+              onClick={this._handleTypeChange}
+              value={{
+                type: 'text',
+                multiline: false,
+              }}
+            >
+              Text
+            </DropdownItem>
+            <DropdownItem
+              onClick={this._handleTypeChange}
+              value={{
+                type: 'text',
+                multiline: true,
+              }}
+            >
+              Text (Multi-line)
+            </DropdownItem>
+          </Dropdown>
+
           {!noToggle && (!hideButtons ? (
             <Button
               onClick={this._handleDisableChange}

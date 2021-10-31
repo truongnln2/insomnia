@@ -22,6 +22,7 @@ interface BaseRequestSetter {
   description: string;
   enabled: boolean;
   metaSortKey: number;
+  multiline?: boolean;
 }
 
 export type RequestSetter = BaseModel & BaseRequestSetter;
@@ -38,6 +39,7 @@ export function init(): BaseRequestSetter {
     description: '',
     enabled: true,
     metaSortKey: -1 * Date.now(),
+    multiline: false,
   };
 }
 
