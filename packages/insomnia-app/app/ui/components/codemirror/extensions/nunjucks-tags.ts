@@ -312,12 +312,19 @@ async function _updateElementText(render, mark, text, renderContext, isVariableU
       const context = await renderContext();
       const con = context.context.getKeysContext();
       const contextForKey = con.keyContext[cleanedStr];
-      const variable = parsedValues[0] || { value: '' };
-      const filters = parsedValues.slice(1);
-      const filtersInnerHTML = filters.length ? ` <label><i class="fa fa-filter"></i> ${filters.length}</label>` : '';
-      // Only prefix the title with context, if context is found
-      title = contextForKey ? `{${contextForKey}}: ${title}` : title;
-      innerHTML = isVariableUncovered ? title : variable.value + filtersInnerHTML;
+      if (parsedValues.length === 0) {
+
+        // Only prefix the title with context, if context is found
+        title = contextForKey ? `{${contextForKey}}: ${title}` : title;
+        innerHTML = isVariableUncovered ? title : cleanedStr;
+      } else {
+        const variable = parsedValues[0] || { value: '' };
+        const filters = parsedValues.slice(1);
+        const filtersInnerHTML = filters.length ? ` <label><i class="fa fa-filter"></i> ${filters.length}</label>` : '';
+        // Only prefix the title with context, if context is found
+        title = contextForKey ? `{${contextForKey}}: ${title}` : title;
+        innerHTML = isVariableUncovered ? title : variable.value + filtersInnerHTML;
+      }
     }
 
     dataError = 'off';
