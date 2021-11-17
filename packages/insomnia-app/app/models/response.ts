@@ -178,7 +178,7 @@ export async function getAvailablesForRequest(
   top: number,
   environmentId: string | null,
 ) {
-  const responses = await _findRecentForRequest(requestId, environmentId, 1);
+  const responses = await _findRecentForRequest(requestId, environmentId, top);
   return responses.slice(0, top);
 }
 

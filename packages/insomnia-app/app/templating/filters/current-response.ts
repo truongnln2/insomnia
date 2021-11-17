@@ -50,7 +50,12 @@ const currentResponseFilter: PluginTemplateFilter = {
   ],
   description: '',
   run: async function(_ctx: PluginTemplateFilterContext, value: any, type?: string, isIncludeBody?: string) {
-    const topGet = type ? parseInt(type) : 0;
+    let topGet;
+    if (typeof type === 'number') {
+      topGet = type;
+    } else {
+      topGet = type ? parseInt(type) : 0;
+    }
     let response: Response | null = null;
     if (topGet >= 0) {
       const responses = await _ctx.util.models.response.getAvailablesRequestId(_ctx.meta.requestId, topGet + 1);
