@@ -145,7 +145,7 @@ const processNumberFilter: PluginTemplateFilter = {
           break;
       }
     }
-    if (isTransformOutput !== 'false') {
+    if (isTransformOutput !== 'false' || !isTransformOutput) {
       switch (transformType) {
         case DigitType[DigitType.dec]: return outputValue.toString(10);
         case DigitType[DigitType.bin]: return outputValue.toString(2);

@@ -24,7 +24,7 @@ const stringReplaceFilter: PluginTemplateFilter = {
     },
   ],
   async run(_context: any, text: string, find: string, isRegex: string, replace: string) {
-    if (isRegex === 'true') {
+    if (isRegex === 'true' || isRegex) {
       const regex = new RegExp(find, 'im');
       return text.replace(regex, replace);
     }
