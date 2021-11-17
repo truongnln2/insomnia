@@ -1,12 +1,10 @@
 import { autoBindMethodsForReact } from 'class-autobind-decorator';
-import { HotKeyRegistry } from 'insomnia-common';
 import React, { PureComponent } from 'react';
 
 import { AUTOBIND_CFG, DEBOUNCE_MILLIS, SortOrder } from '../../../common/constants';
 import { hotKeyRefs } from '../../../common/hotkeys';
 import { executeHotKey } from '../../../common/hotkeys-listener';
 import { KeydownBinder } from '../keydown-binder';
-import { SidebarCreateDropdown } from './sidebar-create-dropdown';
 import { SidebarSortDropdown } from './sidebar-sort-dropdown';
 
 interface Props {
@@ -15,7 +13,6 @@ interface Props {
   requestGroupCreate: () => void;
   sidebarSort: (sortOrder: SortOrder) => void;
   filter: string;
-  hotKeyRegistry: HotKeyRegistry;
 }
 
 @autoBindMethodsForReact(AUTOBIND_CFG)
@@ -62,7 +59,7 @@ export class SidebarFilter extends PureComponent<Props> {
   }
 
   render() {
-    const { filter, hotKeyRegistry, sidebarSort } = this.props;
+    const { filter, sidebarSort } = this.props;
     return (
       <KeydownBinder onKeydown={this._handleKeydown}>
         <div className="sidebar__filter">
@@ -81,11 +78,6 @@ export class SidebarFilter extends PureComponent<Props> {
             )}
           </div>
           <SidebarSortDropdown handleSort={sidebarSort} />
-          <SidebarCreateDropdown
-            handleCreateRequest={this._handleRequestCreate}
-            handleCreateRequestGroup={this._handleRequestGroupCreate}
-            hotKeyRegistry={hotKeyRegistry}
-          />
         </div>
       </KeydownBinder>
     );

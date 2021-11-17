@@ -445,6 +445,31 @@ class App extends PureComponent<AppProps, State> {
     this._handleSendRequestWithEnvironment(request._id, activeEnvironmentId, dataset);
   }
 
+  async handleToggleRequestGroup(collapsed: boolean, parentIds: string[]) {
+    const requestGroupPrs = parentIds.map(id => models.requestGroup.findByParentId(id));
+    const requestGroups = await Promise.all(requestGroupPrs);
+    const requestGroupIds = requestGroups.reduce((arr, rgs) => [...arr, ...rgs], [])
+      .map(rg => rg._id);
+    const requestGroupMetaPrs = requestGroupIds
+      .map(rgId => models.requestGroupMeta.getByParentId(rgId));
+    const requestGroupMetas = await Promise.all(requestGroupMetaPrs);
+    requestGroupMetas.forEach(rgm => {
+      if (rgm) {
+        models.requestGroupMeta.update(rgm, {
+          collapsed,
+        });
+      }
+    });
+    if (requestGroupIds.length) {
+      await this.handleToggleRequestGroup(collapsed, requestGroupIds);
+    }
+  }
+
+  _handleRequestGroupCollapseAll() {
+    const { activeWorkspace } = this.props;
+    this.handleToggleRequestGroup(true, [activeWorkspace?._id || '']);
+  }
+
   _requestGroupCreate(parentId: string) {
     showPrompt({
       title: 'New Folder',
@@ -1763,6 +1788,7 @@ class App extends PureComponent<AppProps, State> {
                 handleStartDragDatasetPaneHorizontal={this._startDragDatasetPaneHorizontal}
                 handleResetDragDatasetPaneHorizontal={this._resetDragDatasetPaneHorizontal}
                 handleSendWithDataset={this._handleSendRequestWithActiveEnvironmentAndDataset}
+                handleRequestGroupCollapseAll={this._handleRequestGroupCollapseAll}
               />
             </ErrorBoundary>
 

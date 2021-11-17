@@ -17,6 +17,7 @@ import { RequestPane } from './panes/request-pane';
 import { ResponsePane } from './panes/response-pane';
 import { SidebarChildren } from './sidebar/sidebar-children';
 import { SidebarFilter } from './sidebar/sidebar-filter';
+import { SidebarRequestActions } from './sidebar/sidebar-request-actions';
 import { WorkspacePageHeader } from './workspace-page-header';
 import type { WrapperProps } from './wrapper';
 
@@ -115,6 +116,7 @@ export class WrapperDebug extends PureComponent<Props> {
       settings,
       sidebarChildren,
       sidebarFilter,
+      handleRequestGroupCollapseAll,
     } = this.props.wrapperProps;
 
     if (!activeWorkspace) {
@@ -147,6 +149,13 @@ export class WrapperDebug extends PureComponent<Props> {
           requestGroupCreate={handleRequestGroupCreate}
           sidebarSort={handleSidebarSort}
           filter={sidebarFilter || ''}
+        />
+
+        <SidebarRequestActions
+          key={`${activeWorkspace._id}::actions`}
+          requestCreate={handleRequestCreate}
+          requestGroupCreate={handleRequestGroupCreate}
+          requestGroupCollapseAll={handleRequestGroupCollapseAll}
           hotKeyRegistry={settings.hotKeyRegistry}
         />
 

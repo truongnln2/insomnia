@@ -140,6 +140,7 @@ export type WrapperProps = AppProps & {
   isVariableUncovered: boolean;
   vcs: VCS | null;
   gitVCS: GitVCS | null;
+  handleRequestGroupCollapseAll: () => void;
 };
 
 interface State {
